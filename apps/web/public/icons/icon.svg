@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LingoLive">
+  <rect width="512" height="512" rx="120" fill="#2F6BFF"/>
+  <g stroke="#FFFFFF" stroke-width="34" stroke-linecap="round">
+    <path d="M160 176v160"/>
+    <path d="M224 128v256"/>
+    <path d="M288 152v208"/>
+    <path d="M352 200v112"/>
+  </g>
+</svg>

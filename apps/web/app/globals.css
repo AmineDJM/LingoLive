@@ -1,0 +1,154 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens are generated from @lingolive/design-tokens at build time by
+ * `lib/theme.ts` and injected as `--ll-*` custom properties on :root. This
+ * file maps them into Tailwind's theme so utilities and hand-written CSS
+ * cannot drift apart.
+ */
+@theme inline {
+  --color-background: var(--ll-color-background);
+  --color-surface: var(--ll-color-surface);
+  --color-surface-elevated: var(--ll-color-surface-elevated);
+  --color-border: var(--ll-color-border);
+  --color-border-strong: var(--ll-color-border-strong);
+  --color-ink: var(--ll-color-text);
+  --color-ink-secondary: var(--ll-color-text-secondary);
+  --color-ink-muted: var(--ll-color-text-muted);
+  --color-on-primary: var(--ll-color-text-on-primary);
+  --color-primary: var(--ll-color-primary);
+  --color-primary-hover: var(--ll-color-primary-hover);
+  --color-primary-soft: var(--ll-color-primary-soft);
+  --color-primary-text: var(--ll-color-primary-text);
+  --color-live: var(--ll-color-live);
+  --color-live-soft: var(--ll-color-live-soft);
+  --color-live-text: var(--ll-color-live-text);
+  --color-danger: var(--ll-color-danger);
+  --color-danger-soft: var(--ll-color-danger-soft);
+  --color-warning: var(--ll-color-warning);
+  --color-transcript-partial: var(--ll-color-transcript-partial);
+  --color-transcript-final: var(--ll-color-transcript-final);
+  --color-focus-ring: var(--ll-color-focus-ring);
+
+  --radius-sm: var(--ll-radius-sm);
+  --radius-md: var(--ll-radius-md);
+  --radius-lg: var(--ll-radius-lg);
+  --radius-xl: var(--ll-radius-xl);
+  --radius-full: var(--ll-radius-full);
+
+  --font-sans: var(--ll-font-family);
+  --font-mono: var(--ll-font-family-mono);
+}
+
+:root {
+  color-scheme: light dark;
+}
+
+html {
+  /* Anchored headings must not hide under the sticky header. */
+  scroll-padding-top: 5rem;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--ll-color-background);
+  color: var(--ll-color-text);
+  font-family: var(--ll-font-family);
+  font-synthesis-weight: none;
+  text-rendering: optimizeLegibility;
+  min-height: 100dvh;
+}
+
+/* WCAG 2.2 §2.4.11/2.4.13 — focus must always be visible and never obscured. */
+:focus-visible {
+  outline: 3px solid var(--ll-color-focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Every interactive element meets the 48px target from the design system. */
+button,
+a[role='button'],
+[data-touch-target] {
+  min-height: var(--ll-min-touch-target);
+  min-width: var(--ll-min-touch-target);
+}
+
+.ll-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 400;
+  padding: 0.75rem 1rem;
+  background: var(--ll-color-surface);
+  color: var(--ll-color-text);
+  border-radius: var(--ll-radius-md);
+  box-shadow: var(--ll-shadow-raised);
+}
+.ll-skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+}
+
+@keyframes ll-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.88);
+  }
+}
+
+.ll-live-dot {
+  animation: ll-pulse var(--ll-duration-pulse) ease-in-out infinite;
+}
+
+@keyframes ll-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ll-segment-enter {
+  animation: ll-fade-in var(--ll-duration-base) var(--ll-easing-standard);
+}
+
+/*
+ * Reduce Motion is honoured globally rather than per component, so a new
+ * animation cannot forget to opt in.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* The live transcript scales with a user preference, not a fixed size. */
+.ll-transcript {
+  font-size: calc(var(--ll-font-size-transcript-default) * var(--ll-transcript-scale, 1));
+  line-height: 1.45;
+}
+
+/* Discussion tiles rotate; their text direction must not. */
+.ll-tile {
+  transform: rotate(var(--ll-tile-rotation, 0deg));
+  transform-origin: center;
+  transition: transform var(--ll-duration-base) var(--ll-easing-standard);
+}
+
+[dir='rtl'] .ll-flip-icon {
+  transform: scaleX(-1);
+}
