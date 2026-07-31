@@ -24,6 +24,8 @@ const prodBase: NodeJS.ProcessEnv = {
   OPENAI_TRANSLATION_MODEL: 'some-current-text-model',
   AUTH_PROVIDER: 'oidc',
   AUTH_SECRET: 'b'.repeat(40),
+  AUTH_ISSUER: 'https://issuer.example.com',
+  AUTH_JWKS_URL: 'https://issuer.example.com/.well-known/jwks.json',
   REDIS_URL: 'redis://localhost:6379',
   ADMIN_API_TOKEN: 'c'.repeat(32),
   APP_BASE_URL: 'https://lingolive.app',
@@ -119,8 +121,44 @@ describe('production hardening', () => {
     );
   });
 
-  it('refuses local auth in production', () => {
-    expect(() => parseServerEnv({ ...prodBase, AUTH_PROVIDER: 'local' })).toThrow(/AUTH_PROVIDER/);
+  it('allows local auth in production but disables account linking', () => {
+    // The product works entirely as a guest. Refusing to boot without an
+    // identity provider would make "no account required" undeployable — so
+    // `local` is accepted, and the capability that is actually unsafe in that
+    // mode is switched off instead.
+    const env = parseServerEnv({ ...prodBase, AUTH_PROVIDER: 'local' });
+    expect(env.AUTH_PROVIDER).toBe('local');
+    expect(deriveConfig(env).accountLinkingEnabled).toBe(false);
+  });
+
+  it('enables account linking once a real identity provider is configured', () => {
+    expect(deriveConfig(parseServerEnv(prodBase)).accountLinkingEnabled).toBe(true);
+  });
+
+  it('refuses a half-configured oidc provider', () => {
+    const { AUTH_JWKS_URL: _omitted, ...withoutJwks } = prodBase;
+    expect(() => parseServerEnv(withoutJwks)).toThrow(/AUTH_JWKS_URL/);
+    const { AUTH_ISSUER: _alsoOmitted, ...withoutIssuer } = prodBase;
+    expect(() => parseServerEnv(withoutIssuer)).toThrow(/AUTH_ISSUER/);
+  });
+
+  it('lets a worker run in production without any AI provider configuration', () => {
+    // The worker does retention and deletion. Requiring it to declare a
+    // provider would mean handing it OPENAI_API_KEY for nothing.
+    const {
+      AI_PROVIDER: _ai,
+      OPENAI_API_KEY: _key,
+      OPENAI_TRANSLATION_MODEL: _model,
+      ...withoutAi
+    } = prodBase;
+    const env = parseServerEnv({ ...withoutAi, SERVICE_ROLE: 'worker' });
+    expect(env.SERVICE_ROLE).toBe('worker');
+    expect(env.OPENAI_API_KEY).toBeUndefined();
+  });
+
+  it('still requires the API itself to declare a real provider in production', () => {
+    const { AI_PROVIDER: _ai, ...withoutAi } = prodBase;
+    expect(() => parseServerEnv(withoutAi)).toThrow(/AI_PROVIDER/);
   });
 
   it('refuses leftover development placeholder secrets', () => {

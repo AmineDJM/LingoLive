@@ -43,7 +43,8 @@
     "mobile:update": "pnpm --filter @lingolive/mobile update",
     "check:secrets": "node infra/scripts/scan-secrets.mjs",
     "check:provider": "node infra/scripts/check-provider.mjs",
-    "check:all": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm check:secrets",
+    "check:blueprint": "node infra/scripts/validate-blueprint.mjs",
+    "check:all": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm check:secrets && pnpm check:blueprint",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "prisma": {

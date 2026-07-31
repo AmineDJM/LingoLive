@@ -2,6 +2,7 @@ import {
   createCipheriv,
   createDecipheriv,
   createHmac,
+  hkdfSync,
   randomBytes,
   randomInt,
   timingSafeEqual,
@@ -27,18 +28,63 @@ export interface EncryptionKey {
   readonly key: Buffer;
 }
 
+/** Domain separation, so this key can never collide with another use of the same secret. */
+const KEY_DERIVATION_INFO = 'lingolive/transcript-encryption/v1';
+const MIN_SECRET_LENGTH = 32;
+
+/**
+ * Turns the configured secret into the 32 bytes AES-256 needs.
+ *
+ * Two accepted shapes, and the order matters:
+ *
+ *  1. **Exactly 32 bytes, base64-encoded** — used as-is. This is what
+ *     `generate-secrets.mjs` produces, and taking it verbatim is what keeps
+ *     every already-encrypted transcript readable. Changing this branch would
+ *     silently orphan existing data.
+ *  2. **Any other string of at least 32 characters** — run through HKDF-SHA256
+ *     to produce the key.
+ *
+ * Case 2 exists so a deployment platform can generate the secret itself. The
+ * alternative was requiring an operator to produce base64-encoded random bytes
+ * by hand, which is a terminal and a correct command away — and a step where a
+ * mistake means either a boot failure or, worse, a weak key.
+ *
+ * Derivation is deterministic: the same secret always yields the same key, so
+ * restarts and additional instances agree.
+ */
+export function deriveEncryptionKey(secret: string): Buffer {
+  const decoded = decodeBase64Exact32(secret);
+  if (decoded) return decoded;
+
+  if (secret.length < MIN_SECRET_LENGTH) {
+    throw new Error(
+      `TRANSCRIPT_ENCRYPTION_KEY must be at least ${MIN_SECRET_LENGTH} characters, ` +
+        'or exactly 32 bytes base64-encoded. ' +
+        'Generate one with: node infra/scripts/generate-secrets.mjs',
+    );
+  }
+
+  // A fixed salt is correct here: the input is already high-entropy random
+  // material, not a human-chosen password, so the salt's job is domain
+  // separation rather than defeating precomputation.
+  return Buffer.from(
+    hkdfSync('sha256', Buffer.from(secret, 'utf8'), KEY_DERIVATION_INFO, KEY_DERIVATION_INFO, 32),
+  );
+}
+
+/** Returns the 32 raw bytes only when the input is unambiguously base64 for them. */
+function decodeBase64Exact32(value: string): Buffer | null {
+  if (!/^[A-Za-z0-9+/]{43}=$|^[A-Za-z0-9_-]{43}$/.test(value)) return null;
+  const decoded = Buffer.from(value, 'base64');
+  return decoded.length === 32 ? decoded : null;
+}
+
 export class TranscriptCipher {
   private readonly keysByVersion = new Map<number, Buffer>();
   private readonly currentVersion: number;
 
-  constructor(currentKeyBase64: string, currentVersion: number, retiredKeys: EncryptionKey[] = []) {
-    const key = Buffer.from(currentKeyBase64, 'base64');
-    if (key.length !== 32) {
-      throw new Error(
-        'TRANSCRIPT_ENCRYPTION_KEY must decode to exactly 32 bytes (AES-256). ' +
-          'Generate one with: node infra/scripts/generate-secrets.mjs',
-      );
-    }
+  constructor(currentSecret: string, currentVersion: number, retiredKeys: EncryptionKey[] = []) {
+    const key = deriveEncryptionKey(currentSecret);
     this.currentVersion = currentVersion;
     this.keysByVersion.set(currentVersion, key);
     for (const retired of retiredKeys) {

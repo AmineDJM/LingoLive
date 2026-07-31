@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import {
+  LingoLiveError,
   linkAccountRequestSchema,
   registerDeviceRequestSchema,
   type AuthTokenResponse,
@@ -38,6 +39,17 @@ export async function registerAuthRoutes(app: FastifyInstance, context: AppConte
    * carry-over possible.
    */
   app.post('/auth/link', async (request): Promise<AuthTokenResponse> => {
+    // In `local` auth mode the adapter accepts a token this server itself
+    // signed, so outside development anyone holding a guest token could claim
+    // an identity. Refusing here is what lets the rest of the product deploy
+    // with no identity provider at all — guest mode is unaffected.
+    if (!context.derived.accountLinkingEnabled) {
+      throw new LingoLiveError(
+        'SERVICE_UNAVAILABLE',
+        'Accounts are not enabled on this deployment. Everything works as a guest.',
+      );
+    }
+
     const actor = await app.requireActor(request);
     const body = parseOrThrow(linkAccountRequestSchema, request.body);
     const { user, token, expiresAt } = await auth.linkIdentity({

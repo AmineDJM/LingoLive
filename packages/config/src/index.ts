@@ -77,16 +77,20 @@ export const serverEnvSchema = z
     REDIS_URL: optionalString,
 
     SESSION_SIGNING_SECRET: z.string().min(32, 'SESSION_SIGNING_SECRET must be ≥ 32 characters'),
+    // Either exactly 32 bytes base64-encoded (used verbatim, which is what
+    // keeps existing ciphertext readable) or any random string of at least 32
+    // characters, from which the API derives the key. The second form exists so
+    // a deployment platform can generate the secret itself — see
+    // `deriveEncryptionKey` in apps/api/src/security/crypto.ts.
     TRANSCRIPT_ENCRYPTION_KEY: z
       .string()
       .min(1, 'TRANSCRIPT_ENCRYPTION_KEY is required')
       .refine((value) => {
-        try {
+        if (/^[A-Za-z0-9+/]{43}=$|^[A-Za-z0-9_-]{43}$/.test(value)) {
           return Buffer.from(value, 'base64').length === 32;
-        } catch {
-          return false;
         }
-      }, 'TRANSCRIPT_ENCRYPTION_KEY must be 32 bytes, base64-encoded (see infra/scripts/generate-secrets.mjs)'),
+        return value.length >= 32;
+      }, 'TRANSCRIPT_ENCRYPTION_KEY must be at least 32 characters, or exactly 32 bytes base64-encoded (see infra/scripts/generate-secrets.mjs)'),
     TRANSCRIPT_ENCRYPTION_KEY_VERSION: intFromEnv(1, 1),
 
     AI_PROVIDER: z.enum(['mock', 'openai']).default('mock'),
@@ -148,14 +152,26 @@ export const serverEnvSchema = z
     ENABLE_DEV_SIMULATOR: booleanFromEnv.default(false),
     ENABLE_REQUEST_LOGGING: booleanFromEnv.default(true),
 
+    /**
+     * What this process is.
+     *
+     * The worker runs retention, expiry and deletion jobs. It shares the
+     * application context with the API but never calls an AI provider, so the
+     * provider requirements below do not apply to it — which is what keeps
+     * OPENAI_API_KEY present in exactly one service rather than copied into a
+     * process that has no use for it.
+     */
+    SERVICE_ROLE: z.enum(['api', 'worker']).default('api'),
+
     APP_DISPLAY_NAME: z.string().default('LingoLive'),
     IOS_BUNDLE_IDENTIFIER: z.string().default('com.lingolive.app'),
     ANDROID_PACKAGE: z.string().default('com.lingolive.app'),
   })
   .superRefine((env, ctx) => {
     const isProdLike = env.APP_ENV === 'production' || env.APP_ENV === 'staging';
+    const callsProviders = env.SERVICE_ROLE === 'api';
 
-    if (env.AI_PROVIDER === 'openai') {
+    if (env.AI_PROVIDER === 'openai' && callsProviders) {
       if (!env.OPENAI_API_KEY) {
         ctx.addIssue({
           code: 'custom',
@@ -174,7 +190,7 @@ export const serverEnvSchema = z
     }
 
     if (isProdLike) {
-      if (env.AI_PROVIDER === 'mock') {
+      if (env.AI_PROVIDER === 'mock' && callsProviders) {
         ctx.addIssue({
           code: 'custom',
           path: ['AI_PROVIDER'],
@@ -188,11 +204,27 @@ export const serverEnvSchema = z
           message: 'ENABLE_DEV_SIMULATOR must be false in staging and production',
         });
       }
-      if (env.AUTH_PROVIDER === 'local') {
+      // `local` is deliberately allowed here. The entire product works as a
+      // guest, with a server-minted token and no identity provider at all;
+      // refusing to boot without an IdP would make the "no account required"
+      // promise undeployable.
+      //
+      // What `local` cannot safely do outside development is *link an account*:
+      // its adapter accepts a token this server signed, so in local mode anyone
+      // holding a guest token could claim an identity. So linking is switched
+      // off instead (`derived.accountLinkingEnabled`), and the route says so.
+      if (env.AUTH_PROVIDER === 'oidc' && !env.AUTH_JWKS_URL) {
         ctx.addIssue({
           code: 'custom',
-          path: ['AUTH_PROVIDER'],
-          message: 'AUTH_PROVIDER=local is a development-only mode',
+          path: ['AUTH_JWKS_URL'],
+          message: 'AUTH_JWKS_URL is required when AUTH_PROVIDER=oidc',
+        });
+      }
+      if (env.AUTH_PROVIDER === 'oidc' && !env.AUTH_ISSUER) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['AUTH_ISSUER'],
+          message: 'AUTH_ISSUER is required when AUTH_PROVIDER=oidc',
         });
       }
       if (!env.REDIS_URL) {
@@ -332,6 +364,15 @@ export interface DerivedConfig {
   readonly transcriptionAvailable: boolean;
   readonly redisEnabled: boolean;
   readonly devSimulatorEnabled: boolean;
+  /**
+   * Whether a guest may attach a real account.
+   *
+   * False in `local` auth mode outside development: that adapter accepts a
+   * token this server signed, so allowing linking would let anyone holding a
+   * guest token claim an identity. Guest mode — the whole product — is
+   * unaffected.
+   */
+  readonly accountLinkingEnabled: boolean;
   readonly adminEmails: readonly string[];
 }
 
@@ -349,6 +390,7 @@ export function deriveConfig(env: ServerEnv): DerivedConfig {
     redisEnabled: Boolean(env.REDIS_URL),
     // Belt and braces: the schema already forbids this in prod-like envs.
     devSimulatorEnabled: env.ENABLE_DEV_SIMULATOR && !isStagingOrProduction,
+    accountLinkingEnabled: env.AUTH_PROVIDER === 'oidc' || !isStagingOrProduction,
     adminEmails: env.ADMIN_EMAILS.map((e) => e.toLowerCase()),
   };
 }

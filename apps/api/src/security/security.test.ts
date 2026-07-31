@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   constantTimeEquals,
+  deriveEncryptionKey,
   generateAccessCode,
   generateAnonymousId,
   hashIdentifier,
@@ -55,6 +56,34 @@ describe('TranscriptCipher', () => {
     expect(rotated.decrypt(legacy)).toBe('written before the rotation');
     // New writes use the new key.
     expect(rotated.encrypt('after').startsWith('v2.')).toBe(true);
+  });
+
+  it('uses a 32-byte base64 key verbatim, so existing ciphertext stays readable', () => {
+    // This is the compatibility guarantee. If `deriveEncryptionKey` ever
+    // started deriving from this shape instead of using it directly, every
+    // transcript encrypted before that change would become unreadable — and
+    // nothing would report an error until someone opened an old session.
+    expect(deriveEncryptionKey(KEY)).toEqual(Buffer.alloc(32, 7));
+    expect(deriveEncryptionKey(OLD_KEY.toString('base64'))).toEqual(OLD_KEY);
+  });
+
+  it('derives a key from a platform-generated secret that is not base64 bytes', () => {
+    const generated = 'Xk92mQpLvR7dNs4TzBwYh3JfCgEaUiOb';
+    const key = deriveEncryptionKey(generated);
+    expect(key).toHaveLength(32);
+    // Deterministic: two instances of the API must agree.
+    expect(deriveEncryptionKey(generated)).toEqual(key);
+    // And distinct secrets must not collide.
+    expect(deriveEncryptionKey(`${generated}!`)).not.toEqual(key);
+  });
+
+  it('round-trips through a derived key', () => {
+    const derived = new TranscriptCipher('Xk92mQpLvR7dNs4TzBwYh3JfCgEaUiOb', 1);
+    expect(derived.decrypt(derived.encrypt('une phrase privée'))).toBe('une phrase privée');
+  });
+
+  it('refuses a secret too short to be worth deriving from', () => {
+    expect(() => deriveEncryptionKey('too-short')).toThrow(/at least 32 characters/);
   });
 
   it('rejects tampered ciphertext rather than returning garbage', () => {
