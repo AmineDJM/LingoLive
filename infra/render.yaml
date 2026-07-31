@@ -439,22 +439,11 @@ services:
         fromService:
           { name: lingolive-api-staging, type: web, envVarKey: AUTH_SECRET }
       # Retention, expiry and deletion only. It never calls an AI provider,
-      # so OPENAI_API_KEY is deliberately absent here — the key lives in the
-      # API service and nowhere else.
+      # never serves a request and never emits a URL, so OPENAI_API_KEY,
+      # ADMIN_API_TOKEN and the base URLs are all deliberately absent — the
+      # smallest set of credentials that lets it do its job.
       - key: SERVICE_ROLE
         value: worker
-      - key: ADMIN_API_TOKEN
-        fromService:
-          { name: lingolive-api-staging, type: web, envVarKey: ADMIN_API_TOKEN }
-      - key: APP_BASE_URL
-        fromService:
-          { name: lingolive-api-staging, type: web, envVarKey: APP_BASE_URL }
-      - key: WEB_BASE_URL
-        fromService:
-          { name: lingolive-api-staging, type: web, envVarKey: WEB_BASE_URL }
-      - key: API_BASE_URL
-        fromService:
-          { name: lingolive-api-staging, type: web, envVarKey: API_BASE_URL }
       - key: RETENTION_UNSAVED_SESSION_HOURS
         value: '1'
       - key: RETENTION_BUSINESS_SESSION_DAYS
@@ -518,26 +507,11 @@ services:
         fromService:
           { name: lingolive-api-production, type: web, envVarKey: AUTH_SECRET }
       # Retention, expiry and deletion only. It never calls an AI provider,
-      # so OPENAI_API_KEY is deliberately absent here — the key lives in the
-      # API service and nowhere else.
+      # never serves a request and never emits a URL, so OPENAI_API_KEY,
+      # ADMIN_API_TOKEN and the base URLs are all deliberately absent — the
+      # smallest set of credentials that lets it do its job.
       - key: SERVICE_ROLE
         value: worker
-      - key: ADMIN_API_TOKEN
-        fromService:
-          {
-            name: lingolive-api-production,
-            type: web,
-            envVarKey: ADMIN_API_TOKEN,
-          }
-      - key: APP_BASE_URL
-        fromService:
-          { name: lingolive-api-production, type: web, envVarKey: APP_BASE_URL }
-      - key: WEB_BASE_URL
-        fromService:
-          { name: lingolive-api-production, type: web, envVarKey: WEB_BASE_URL }
-      - key: API_BASE_URL
-        fromService:
-          { name: lingolive-api-production, type: web, envVarKey: API_BASE_URL }
       - key: RETENTION_UNSAVED_SESSION_HOURS
         value: '1'
       - key: RETENTION_BUSINESS_SESSION_DAYS

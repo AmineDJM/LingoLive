@@ -142,18 +142,33 @@ describe('production hardening', () => {
     expect(() => parseServerEnv(withoutIssuer)).toThrow(/AUTH_ISSUER/);
   });
 
-  it('lets a worker run in production without any AI provider configuration', () => {
-    // The worker does retention and deletion. Requiring it to declare a
-    // provider would mean handing it OPENAI_API_KEY for nothing.
+  it('lets a worker run in production with the smallest possible configuration', () => {
+    // The worker does retention and deletion. It never calls a provider,
+    // serves a request or emits a URL, so requiring any of these would mean
+    // handing it credentials it has no use for — and, for the URLs, forcing a
+    // reference-to-a-reference that Render rejects outright.
     const {
       AI_PROVIDER: _ai,
       OPENAI_API_KEY: _key,
       OPENAI_TRANSLATION_MODEL: _model,
-      ...withoutAi
+      ADMIN_API_TOKEN: _admin,
+      APP_BASE_URL: _app,
+      API_BASE_URL: _api,
+      WEB_BASE_URL: _web,
+      ...minimal
     } = prodBase;
-    const env = parseServerEnv({ ...withoutAi, SERVICE_ROLE: 'worker' });
+    const env = parseServerEnv({ ...minimal, SERVICE_ROLE: 'worker' });
     expect(env.SERVICE_ROLE).toBe('worker');
     expect(env.OPENAI_API_KEY).toBeUndefined();
+    expect(env.ADMIN_API_TOKEN).toBeUndefined();
+  });
+
+  it('still requires the API itself to have an admin token and https URLs', () => {
+    const { ADMIN_API_TOKEN: _admin, ...withoutToken } = prodBase;
+    expect(() => parseServerEnv(withoutToken)).toThrow(/ADMIN_API_TOKEN/);
+    expect(() => parseServerEnv({ ...prodBase, WEB_BASE_URL: 'http://lingolive.app' })).toThrow(
+      /WEB_BASE_URL/,
+    );
   });
 
   it('still requires the API itself to declare a real provider in production', () => {

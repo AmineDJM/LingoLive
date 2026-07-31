@@ -124,6 +124,25 @@ async function main() {
     }
   }
 
+  // Render refuses a reference to a reference: `envVarKey` may point at a
+  // literal or a generated value, but not at a variable that is itself
+  // `fromService`/`fromDatabase`. The message it gives ("cannot refer to
+  // reference env vars X") does not say which end is wrong, so name both.
+  for (const service of blueprint.services ?? []) {
+    for (const entry of service.envVars ?? []) {
+      const source = entry.fromService;
+      if (!source?.envVarKey) continue;
+      const target = byName.get(source.name);
+      const targetVar = (target?.envVars ?? []).find((e) => e.key === source.envVarKey);
+      if (targetVar && (targetVar.fromService || targetVar.fromDatabase)) {
+        structural.push(
+          `${service.name}.${entry.key} chains a reference: ` +
+            `${source.name}.${source.envVarKey} is itself a reference, which Render rejects`,
+        );
+      }
+    }
+  }
+
   const uniqueStructural = [...new Set(structural)];
   if (uniqueStructural.length > 0) {
     console.log('');

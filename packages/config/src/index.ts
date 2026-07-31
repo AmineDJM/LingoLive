@@ -180,9 +180,14 @@ export const serverEnvSchema = z
   })
   .superRefine((env, ctx) => {
     const isProdLike = env.APP_ENV === 'production' || env.APP_ENV === 'staging';
-    const callsProviders = env.SERVICE_ROLE === 'api';
+    // The worker runs retention and deletion jobs. It never calls an AI
+    // provider, never serves a request and never emits a URL, so the rules
+    // below that exist to protect users of the API do not apply to it —
+    // which is what keeps the provider key and the admin token out of a
+    // process that has no use for either.
+    const servesUsers = env.SERVICE_ROLE === 'api';
 
-    if (env.AI_PROVIDER === 'openai' && callsProviders) {
+    if (env.AI_PROVIDER === 'openai' && servesUsers) {
       if (!env.OPENAI_API_KEY) {
         ctx.addIssue({
           code: 'custom',
@@ -201,7 +206,7 @@ export const serverEnvSchema = z
     }
 
     if (isProdLike) {
-      if (env.AI_PROVIDER === 'mock' && callsProviders) {
+      if (env.AI_PROVIDER === 'mock' && servesUsers) {
         ctx.addIssue({
           code: 'custom',
           path: ['AI_PROVIDER'],
@@ -245,7 +250,7 @@ export const serverEnvSchema = z
           message: 'REDIS_URL is required outside development (realtime fan-out and rate limits)',
         });
       }
-      if (!env.ADMIN_API_TOKEN || env.ADMIN_API_TOKEN.length < 24) {
+      if (servesUsers && (!env.ADMIN_API_TOKEN || env.ADMIN_API_TOKEN.length < 24)) {
         ctx.addIssue({
           code: 'custom',
           path: ['ADMIN_API_TOKEN'],
@@ -270,7 +275,7 @@ export const serverEnvSchema = z
         ['API_BASE_URL', env.API_BASE_URL],
         ['WEB_BASE_URL', env.WEB_BASE_URL],
       ] as const) {
-        if (!value.startsWith('https://')) {
+        if (servesUsers && !value.startsWith('https://')) {
           ctx.addIssue({
             code: 'custom',
             path: [key],
