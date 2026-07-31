@@ -68,8 +68,10 @@ services:
       pnpm exec prisma generate --schema prisma/schema.prisma
       pnpm --filter @lingolive/api build
     # Migrations run before the new instance takes traffic, and never in
-    # parallel with the old one serving it.
-    preDeployCommand: pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+    # parallel with the old one serving it. The wrapper waits for PostgreSQL:
+    # on a first apply the database is often still provisioning, and
+    # `prisma migrate deploy` does not retry.
+    preDeployCommand: node infra/scripts/migrate.mjs
     startCommand: node apps/api/dist/server.js
     healthCheckPath: /health
     envVars:

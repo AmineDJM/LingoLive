@@ -63,7 +63,9 @@ services:
       pnpm run build:packages
       pnpm exec prisma generate --schema prisma/schema.prisma
       pnpm --filter @lingolive/api build
-    preDeployCommand: pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+    # Waits for PostgreSQL before migrating: on a first apply the database
+    # is often still provisioning, and `migrate deploy` does not retry.
+    preDeployCommand: node infra/scripts/migrate.mjs
     startCommand: node apps/api/dist/server.js
     healthCheckPath: /health
     numInstances: 2 # Realtime fan-out is Redis-backed, so instances are interchangeable.

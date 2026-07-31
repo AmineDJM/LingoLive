@@ -50,6 +50,20 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  experimental: {
+    // One build worker instead of one per core.
+    //
+    // Prerendering 7 locales × 17 marketing pages plus the app routes runs a
+    // worker per CPU by default, and each holds its own copy of the i18n
+    // corpus and the React renderer. On a small build instance that is how a
+    // deploy dies with an unexplained "exited with status 1" and a log that
+    // simply stops mid-line.
+    //
+    // Serial prerendering costs about a minute of build time and takes a
+    // meaningful bite out of peak memory. Build time is not the constraint
+    // here; fitting in the instance is.
+    cpus: 1,
+  },
   // Workspace packages ship dual ESM/CJS; transpiling keeps tree-shaking
   // effective and avoids a dual-package hazard in the client bundle.
   transpilePackages: [
