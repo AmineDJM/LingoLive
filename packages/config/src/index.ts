@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeBaseUrl, normalizeOrigins } from '@lingolive/contracts';
 
 /**
  * @lingolive/config — one validated, typed view of the environment.
@@ -67,11 +68,16 @@ export const serverEnvSchema = z
     PORT: intFromEnv(4000, 1, 65_535),
     HOST: z.string().default('0.0.0.0'),
 
-    APP_BASE_URL: z.string().default('http://localhost:3000'),
-    API_BASE_URL: z.string().default('http://localhost:4000'),
-    WEB_BASE_URL: z.string().default('http://localhost:3000'),
+    // Normalised, not merely validated: a platform that wires these
+    // automatically supplies a bare hostname. See packages/contracts/src/urls.ts.
+    APP_BASE_URL: z.string().default('http://localhost:3000').transform(normalizeBaseUrl),
+    API_BASE_URL: z.string().default('http://localhost:4000').transform(normalizeBaseUrl),
+    WEB_BASE_URL: z.string().default('http://localhost:3000').transform(normalizeBaseUrl),
     DEEP_LINK_SCHEME: z.string().default('lingolive'),
-    CORS_ALLOWED_ORIGINS: csv(['http://localhost:3000']),
+    // Empty means "whatever APP_BASE_URL is" — see the refinement below. One
+    // less value to keep in step by hand, and an allow-list that disagrees
+    // with the app's own origin blocks every request from it.
+    CORS_ALLOWED_ORIGINS: csv([]).transform(normalizeOrigins),
 
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     REDIS_URL: optionalString,
@@ -178,6 +184,11 @@ export const serverEnvSchema = z
     IOS_BUNDLE_IDENTIFIER: z.string().default('com.lingolive.app'),
     ANDROID_PACKAGE: z.string().default('com.lingolive.app'),
   })
+  .transform((env) => ({
+    ...env,
+    CORS_ALLOWED_ORIGINS:
+      env.CORS_ALLOWED_ORIGINS.length > 0 ? env.CORS_ALLOWED_ORIGINS : [env.APP_BASE_URL],
+  }))
   .superRefine((env, ctx) => {
     const isProdLike = env.APP_ENV === 'production' || env.APP_ENV === 'staging';
     // The worker runs retention and deletion jobs. It never calls an AI

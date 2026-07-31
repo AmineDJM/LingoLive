@@ -1,6 +1,7 @@
 import {
   DEFAULT_LOCALE,
   localeFromUrlSegment,
+  normalizeBaseUrl,
   UI_LOCALE_DEFINITIONS,
   type UiLocale,
 } from '@lingolive/contracts';
@@ -12,15 +13,14 @@ import {
  * from `NEXT_PUBLIC_SITE_URL`, so a deployment on a different hostname needs
  * no code change.
  */
-export const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(
-  /\/$/,
-  '',
+// Normalised, not used verbatim: a platform that wires these automatically
+// supplies a bare hostname, and `new URL()` in `metadataBase` throws on one —
+// which surfaces as a build that exits 1 with no useful message.
+export const siteUrl = normalizeBaseUrl(
+  process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
 );
 
-export const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(
-  /\/$/,
-  '',
-);
+export const apiUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 
 export const appEnv = process.env.NEXT_PUBLIC_APP_ENV ?? 'development';
 

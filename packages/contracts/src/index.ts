@@ -14,6 +14,7 @@ export * from './transcript.js';
 export * from './entitlements.js';
 export * from './realtime.js';
 export * from './http.js';
+export * from './urls.js';
 export * from './admin.js';
 
 /** Bumped together with any breaking change to the HTTP or WS contracts. */

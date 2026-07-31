@@ -102,14 +102,25 @@ services:
             type: keyvalue,
             property: connectionString,
           }
+      # These are the app's PUBLIC addresses: they end up in join links, QR
+      # codes and canonical tags, and they decide which origin the browser is
+      # allowed to call from.
+      #
+      # They are not wired with `fromService: { property: host }` because that
+      # resolves to the internal service name — `lingolive-web-staging` with no
+      # domain. The API then refuses to boot ("must use https://") and, once it
+      # does, every browser request is blocked by CORS because the real origin
+      # ends in .onrender.com and the allow-list does not.
+      #
+      # So they are entered once, from what Render shows at the top of each
+      # service's page. CORS_ALLOWED_ORIGINS is deliberately absent: it
+      # defaults to APP_BASE_URL.
       - key: APP_BASE_URL
-        fromService: { name: lingolive-web-staging, type: web, property: host }
+        sync: false # https://lingolive-web-staging-xxxx.onrender.com
       - key: WEB_BASE_URL
-        fromService: { name: lingolive-web-staging, type: web, property: host }
+        sync: false # the same value as APP_BASE_URL
       - key: API_BASE_URL
-        fromService: { name: lingolive-api-staging, type: web, property: host }
-      - key: CORS_ALLOWED_ORIGINS
-        fromService: { name: lingolive-web-staging, type: web, property: host }
+        sync: false # https://lingolive-api-staging-xxxx.onrender.com
       - key: DEEP_LINK_SCHEME
         value: lingolive
       # --- Secrets: fill in the dashboard, never here -----------------------
@@ -214,12 +225,15 @@ services:
       # Public by definition — these ship to the browser. No secret belongs here.
       - key: NEXT_PUBLIC_APP_ENV
         value: staging
+      # Same reason as on the API: `property: host` gives an internal name, and
+      # `new URL()` on it throws during the build. Entered once, from the URL
+      # Render shows on each service.
       - key: NEXT_PUBLIC_API_URL
-        fromService: { name: lingolive-api-staging, type: web, property: host }
+        sync: false # https://lingolive-api-staging-xxxx.onrender.com
       - key: NEXT_PUBLIC_WEB_URL
-        fromService: { name: lingolive-web-staging, type: web, property: host }
+        sync: false # https://lingolive-web-staging-xxxx.onrender.com
       - key: NEXT_PUBLIC_SITE_URL
-        fromService: { name: lingolive-web-staging, type: web, property: host }
+        sync: false # the same value as NEXT_PUBLIC_WEB_URL
       - key: NEXT_PUBLIC_SENTRY_DSN
         value: '' # Optional; empty means the integration is off.
       - key: NEXT_PUBLIC_POSTHOG_KEY

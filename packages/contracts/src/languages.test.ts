@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { normalizeBaseUrl, normalizeOrigins } from './urls.js';
 import {
   dedupeTargetLanguages,
   findLanguage,
@@ -109,5 +110,48 @@ describe('language schemas', () => {
 
   it('rejects unknown languages', () => {
     expect(readingLanguageSchema.safeParse('xx-YY').success).toBe(false);
+  });
+});
+
+describe('normalizeBaseUrl', () => {
+  it('turns a bare hostname into an https origin', () => {
+    // Exactly what Render's `fromService: { property: host }` hands over.
+    expect(normalizeBaseUrl('lingolive-web-staging-n4cp')).toBe(
+      'https://lingolive-web-staging-n4cp',
+    );
+    expect(normalizeBaseUrl('lingolive-web.onrender.com')).toBe(
+      'https://lingolive-web.onrender.com',
+    );
+  });
+
+  it('keeps http for a local host, where TLS does not exist', () => {
+    expect(normalizeBaseUrl('localhost:3000')).toBe('http://localhost:3000');
+    expect(normalizeBaseUrl('127.0.0.1:4000')).toBe('http://127.0.0.1:4000');
+  });
+
+  it('leaves an explicit scheme alone and trims the trailing slash', () => {
+    expect(normalizeBaseUrl('https://lingolive.app/')).toBe('https://lingolive.app');
+    expect(normalizeBaseUrl('http://localhost:3000')).toBe('http://localhost:3000');
+    expect(normalizeBaseUrl('wss://api.example.com')).toBe('wss://api.example.com');
+  });
+
+  it('produces something new URL() accepts, which is the actual requirement', () => {
+    for (const input of ['lingolive-web-staging-n4cp', 'example.com', 'localhost:3000']) {
+      expect(() => new URL(normalizeBaseUrl(input))).not.toThrow();
+    }
+  });
+
+  it('leaves an empty value empty rather than inventing a URL', () => {
+    expect(normalizeBaseUrl('')).toBe('');
+    expect(normalizeBaseUrl('   ')).toBe('');
+  });
+
+  it('normalises every origin in an allow-list, keeping the wildcard', () => {
+    // A browser sends `Origin: https://host`; a bare host would never match.
+    expect(normalizeOrigins(['web.onrender.com', 'https://lingolive.app', '*'])).toEqual([
+      'https://web.onrender.com',
+      'https://lingolive.app',
+      '*',
+    ]);
   });
 });

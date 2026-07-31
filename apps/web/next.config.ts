@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { normalizeBaseUrl } from '@lingolive/contracts';
 
 /**
  * Security headers.
@@ -8,7 +9,9 @@ import type { NextConfig } from 'next';
  * `connect-src` is widened at build time to the configured API origin because
  * the browser talks to it over both HTTPS and WSS.
  */
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+// Same normalisation as lib/site.ts: a bare hostname from the platform must
+// become an origin, or the CSP's connect-src silently blocks every API call.
+const apiUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
 const apiWs = apiUrl.replace(/^http/, 'ws');
 const isDev = process.env.NODE_ENV !== 'production';
 

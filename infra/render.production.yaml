@@ -104,8 +104,6 @@ services:
         sync: false
       - key: API_BASE_URL
         sync: false
-      - key: CORS_ALLOWED_ORIGINS
-        sync: false
       - key: DEEP_LINK_SCHEME
         value: lingolive
       - key: SESSION_SIGNING_SECRET
