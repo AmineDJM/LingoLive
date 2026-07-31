@@ -12,6 +12,13 @@
 # Apply with the Render dashboard (Blueprints → New Blueprint Instance) or
 # `render blueprint launch`. See docs/DEPLOYMENT.md for the full walkthrough.
 #
+# No service pins a `branch`. A hard-coded branch name is a Blueprint that
+# fails validation on any repository that does not happen to use that name;
+# omitting it makes every service follow the branch the Blueprint is synced
+# from, which is chosen in the dashboard. Staging and production are therefore
+# separated by `autoDeploy`, not by branch: staging follows the synced branch
+# automatically, production only ever deploys when a human asks it to.
+#
 # Secrets are NEVER in this file. Every `sync: false` value must be filled in
 # the Render dashboard before the first deploy — the API refuses to boot with
 # a placeholder in staging or production.
@@ -61,7 +68,6 @@ services:
     runtime: node
     plan: starter
     region: frankfurt
-    branch: main
     rootDir: .
     autoDeploy: true
     buildCommand: |
@@ -167,7 +173,6 @@ services:
     runtime: node
     plan: standard
     region: frankfurt
-    branch: main
     rootDir: .
     # Production never deploys on push. A release is a deliberate act.
     autoDeploy: false
@@ -270,7 +275,6 @@ services:
     runtime: node
     plan: starter
     region: frankfurt
-    branch: main
     rootDir: .
     autoDeploy: true
     buildCommand: |
@@ -314,7 +318,6 @@ services:
     runtime: node
     plan: standard
     region: frankfurt
-    branch: main
     rootDir: .
     autoDeploy: false
     buildCommand: |
@@ -357,7 +360,6 @@ services:
     runtime: node
     plan: starter
     region: frankfurt
-    branch: main
     rootDir: .
     autoDeploy: true
     buildCommand: |
@@ -414,7 +416,6 @@ services:
     runtime: node
     plan: starter
     region: frankfurt
-    branch: main
     rootDir: .
     autoDeploy: false
     buildCommand: |

@@ -106,9 +106,16 @@ side: an API, a web app, a worker, Postgres and Redis for each.
 ### First deploy
 
 1. **Create the Blueprint.** Render dashboard → _Blueprints_ → _New Blueprint
-   Instance_ → point at this repository → select `infra/render.yaml`. Review the
-   resources it will create; the free tiers are not appropriate for the realtime
-   path (they sleep).
+   Instance_ → point at this repository → set **Blueprint Path** to
+   `infra/render.yaml` and **Branch** to the branch you are deploying. Review
+   the resources it will create; the free tiers are not appropriate for the
+   realtime path (they sleep).
+
+   No service in the Blueprint pins a branch name. Every service follows the
+   branch you select here, so the file validates on any repository whatever its
+   default branch is called. Staging and production are separated by
+   `autoDeploy`, not by branch: staging redeploys on every push to that branch,
+   production only when someone asks it to.
 
 2. **Fill the secrets.** Every `sync: false` variable must be set in the
    dashboard before the first deploy. The API refuses to boot in staging or

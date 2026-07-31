@@ -164,6 +164,11 @@ function scanCredentials(file, content) {
 }
 
 function scanClientEnvNames(file, content) {
+  // Prose cannot ship a variable to a client, and the documentation has to be
+  // able to name the thing it forbids. Markdown is still scanned for actual
+  // credentials by `scanCredentials` — this exemption is for the name only.
+  if (path.extname(file).toLowerCase() === '.md') return;
+
   const lines = content.split('\n');
   for (const [index, line] of lines.entries()) {
     const match = line.match(CLIENT_ENV_PATTERN);
