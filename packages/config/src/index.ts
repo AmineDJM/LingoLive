@@ -104,6 +104,17 @@ export const serverEnvSchema = z
     OPENAI_TRANSLATION_MODEL: optionalString,
     OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),
     OPENAI_REALTIME_URL: z.string().default('https://api.openai.com/v1/realtime'),
+    /**
+     * Path appended to OPENAI_REALTIME_URL to mint an ephemeral transcription
+     * credential.
+     *
+     * Configurable because the provider exposes more than one realtime entry
+     * point (`/client_secrets`, `/transcription_sessions`) and which one a
+     * given model expects is not something source code should assume. A wrong
+     * value produces a 404 from the provider at session start — visible, and
+     * fixable in the dashboard without a deploy.
+     */
+    OPENAI_REALTIME_SESSION_PATH: z.string().default('/client_secrets'),
     REALTIME_TOKEN_TTL_SECONDS: intFromEnv(60, 10, 600),
 
     AUTH_PROVIDER: z.enum(['local', 'oidc']).default('local'),

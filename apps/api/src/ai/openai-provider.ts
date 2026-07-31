@@ -64,18 +64,21 @@ export class OpenAiTranscriptionProvider implements TranscriptionProvider {
 
     let response: Response;
     try {
-      response = await this.fetchFn(`${this.env.OPENAI_REALTIME_URL}/client_secrets`, {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
-          'content-type': 'application/json',
+      response = await this.fetchFn(
+        `${this.env.OPENAI_REALTIME_URL}${this.env.OPENAI_REALTIME_SESSION_PATH}`,
+        {
+          method: 'POST',
+          headers: {
+            authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            expires_after: { anchor: 'created_at', seconds: request.ttlSeconds },
+            session: { type: 'transcription', audio: { input: body } },
+          }),
+          signal: AbortSignal.timeout(10_000),
         },
-        body: JSON.stringify({
-          expires_after: { anchor: 'created_at', seconds: request.ttlSeconds },
-          session: { type: 'transcription', audio: { input: body } },
-        }),
-        signal: AbortSignal.timeout(10_000),
-      });
+      );
     } catch (error) {
       // Never log the key, the URL query or the response body.
       this.logger.error(

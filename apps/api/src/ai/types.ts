@@ -106,13 +106,26 @@ export const MOCK_COST_RATES: CostRates = {
 };
 
 /**
- * Default non-zero rates so a real deployment sees meaningful cost numbers
- * before it has tuned them. Override with COST_* environment variables.
+ * Default rates, taken from the provider's published pricing rather than
+ * estimated.
+ *
+ * These are not cosmetic. The usage ledger and the cost circuit breaker are
+ * computed from them, so a rate that is too low means the breaker lets through
+ * proportionally more spend than the operator asked for before it trips. The
+ * previous values here were guesses and were low by roughly 3×.
+ *
+ *   audio   $0.017 / minute of realtime audio  (gpt-live-transcribe)
+ *   tokens  $0.20 in / $1.20 out per 1M         (gpt-5.6-luna, after the
+ *                                                2026-07-30 price change)
+ *
+ * Verified 2026-07-31. Re-check whenever the configured models change —
+ * provider pricing moves, and a stale rate makes every cost figure in the
+ * operator console quietly wrong.
  */
 export const DEFAULT_COST_RATES: CostRates = {
-  audioPerMinuteUsd: 0.006,
-  inputTokensPerMillionUsd: 0.15,
-  outputTokensPerMillionUsd: 0.6,
+  audioPerMinuteUsd: 0.017,
+  inputTokensPerMillionUsd: 0.2,
+  outputTokensPerMillionUsd: 1.2,
 };
 
 export function estimateAudioCostUsd(seconds: number, rates: CostRates): number {

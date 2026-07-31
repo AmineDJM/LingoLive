@@ -152,6 +152,10 @@ services:
         value: gpt-5.6-luna
       - key: REALTIME_TOKEN_TTL_SECONDS
         value: '60'
+      # If starting a session returns 404 from the provider, the other realtime
+      # entry point is /transcription_sessions. Changeable here, no deploy.
+      - key: OPENAI_REALTIME_SESSION_PATH
+        value: /client_secrets
       # --- Quotas & cost ----------------------------------------------------
       - key: GUEST_MINUTES_PER_MONTH
         value: '30'
@@ -259,6 +263,8 @@ services:
         value: gpt-5.6-luna
       - key: REALTIME_TOKEN_TTL_SECONDS
         value: '60'
+      - key: OPENAI_REALTIME_SESSION_PATH
+        value: /client_secrets
       - key: GUEST_MINUTES_PER_MONTH
         value: '30'
       - key: FREE_MINUTES_PER_MONTH
