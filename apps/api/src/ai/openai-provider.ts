@@ -1,6 +1,6 @@
 import { dedupeTargetLanguages, findLanguage, LingoLiveError } from '@lingolive/contracts';
 import type { ServerEnv } from '@lingolive/config';
-import type { Logger } from '@lingolive/logging';
+import { scrubForLog, type Logger } from '@lingolive/logging';
 import type {
   EphemeralTranscriptionCredential,
   TranscriptionCredentialRequest,
@@ -51,17 +51,6 @@ export class OpenAiTranscriptionProvider implements TranscriptionProvider {
     const model = this.env.OPENAI_TRANSCRIPTION_MODEL;
     const transport = this.resolveTransport(request);
 
-    // Realtime session parameters are supplied as documented by the provider;
-    // the endpoint is configurable so a path change is a deploy, not a patch.
-    const body = {
-      model,
-      // `auto` lets the model detect the spoken language, which is what the
-      // product wants by default — the user picks what to *read*, not what is
-      // being spoken.
-      language: request.spokenLanguage === 'auto' ? undefined : request.spokenLanguage,
-      prompt: request.vocabularyHints.length > 0 ? request.vocabularyHints.join(', ') : undefined,
-    };
-
     let response: Response;
     try {
       response = await this.fetchFn(
@@ -72,10 +61,7 @@ export class OpenAiTranscriptionProvider implements TranscriptionProvider {
             authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
             'content-type': 'application/json',
           },
-          body: JSON.stringify({
-            expires_after: { anchor: 'created_at', seconds: request.ttlSeconds },
-            session: { type: 'transcription', audio: { input: body } },
-          }),
+          body: JSON.stringify(this.sessionRequestBody(model, request)),
           signal: AbortSignal.timeout(10_000),
         },
       );
@@ -93,13 +79,41 @@ export class OpenAiTranscriptionProvider implements TranscriptionProvider {
     }
 
     if (!response.ok) {
+      // The provider says exactly what is wrong — a rejected key, a model this
+      // account cannot use, a parameter in the wrong place. Throwing that away
+      // and reporting "an error occurred" turned a one-line fix into several
+      // rounds of guessing against a deployment we cannot see.
+      const failure = await describeProviderFailure(response);
       this.logger.error(
-        { sessionId: request.sessionId, status: response.status, provider: 'openai' },
+        {
+          sessionId: request.sessionId,
+          provider: 'openai',
+          model,
+          // The path, never the full URL: it carries no key, but there is no
+          // reason to put a credentialled endpoint in a log either.
+          sessionPath: this.env.OPENAI_REALTIME_SESSION_PATH,
+          ...failure,
+          // A provider error message quotes the value that caused it, and
+          // vocabulary hints are typed by the user.
+          providerMessage: scrubForLog(failure.providerMessage),
+        },
         'Transcription provider rejected the credential request',
       );
       throw new LingoLiveError(
         response.status === 429 ? 'RATE_LIMITED' : 'AI_PROVIDER_UNAVAILABLE',
         'Could not create a transcription credential',
+        {
+          // `type`, `code` and `param` are the provider's own vocabulary —
+          // `invalid_request_error`, `model_not_found`, a parameter path. No
+          // transcript, no key, nothing the user said. The message is NOT
+          // included: it is the one field that can quote user input.
+          details: {
+            providerStatus: failure.providerStatus,
+            ...(failure.providerType ? { providerType: failure.providerType } : {}),
+            ...(failure.providerCode ? { providerCode: failure.providerCode } : {}),
+            ...(failure.providerParam ? { providerParam: failure.providerParam } : {}),
+          },
+        },
       );
     }
 
@@ -133,6 +147,43 @@ export class OpenAiTranscriptionProvider implements TranscriptionProvider {
   }
 
   /**
+   * The body that mints an ephemeral transcription credential.
+   *
+   * There are two documented entry points and they do NOT take the same shape,
+   * so the body follows the configured path rather than assuming one. That is
+   * what makes `OPENAI_REALTIME_SESSION_PATH` a real switch: if one endpoint is
+   * not available to an account, changing that one variable moves to the other
+   * without a code change.
+   *
+   * In both shapes the model, the language and the prompt belong to a
+   * `transcription` object. They were previously sent one level too high, at
+   * `audio.input`, which the API rejects as an unknown parameter — a 400 that
+   * reached the user as an unexplained error on the first tap of Listen.
+   */
+  private sessionRequestBody(
+    model: string,
+    request: TranscriptionCredentialRequest,
+  ): Record<string, unknown> {
+    const transcription = {
+      model,
+      // `auto` lets the model detect the spoken language, which is what the
+      // product wants by default — the user picks what to *read*, not what is
+      // being spoken. Omitted entirely rather than sent as the string "auto".
+      language: request.spokenLanguage === 'auto' ? undefined : request.spokenLanguage,
+      prompt: request.vocabularyHints.length > 0 ? request.vocabularyHints.join(', ') : undefined,
+    };
+
+    if (this.env.OPENAI_REALTIME_SESSION_PATH.includes('transcription_sessions')) {
+      return { input_audio_transcription: transcription };
+    }
+
+    return {
+      expires_after: { anchor: 'created_at', seconds: request.ttlSeconds },
+      session: { type: 'transcription', audio: { input: { transcription } } },
+    };
+  }
+
+  /**
    * Web uses WebRTC directly to the provider (lowest latency). Mobile routes
    * audio through this API over WSS — see ADR 0004.
    */
@@ -142,6 +193,42 @@ export class OpenAiTranscriptionProvider implements TranscriptionProvider {
     if (request.preferredTransport === 'webrtc') return 'webrtc';
     if (request.preferredTransport === 'websocket') return 'websocket';
     return request.platform === 'web' ? 'webrtc' : 'websocket';
+  }
+}
+
+interface ProviderFailure {
+  readonly providerStatus: number;
+  readonly providerType?: string;
+  readonly providerCode?: string;
+  readonly providerParam?: string;
+  readonly providerMessage?: string;
+}
+
+/**
+ * Reads the reason out of a provider error response.
+ *
+ * Deliberately total: a body that is empty, truncated, HTML from a gateway or
+ * simply not JSON still yields the status. A diagnostic helper that can itself
+ * throw would replace the real error with its own, which is how the original
+ * failure stays invisible.
+ */
+async function describeProviderFailure(response: Response): Promise<ProviderFailure> {
+  try {
+    const payload = (await response.json()) as {
+      error?: { message?: unknown; type?: unknown; code?: unknown; param?: unknown };
+    };
+    const error = payload.error;
+    const asString = (value: unknown): string | undefined =>
+      typeof value === 'string' && value.length > 0 ? value : undefined;
+    return {
+      providerStatus: response.status,
+      providerType: asString(error?.type),
+      providerCode: asString(error?.code),
+      providerParam: asString(error?.param),
+      providerMessage: asString(error?.message),
+    };
+  } catch {
+    return { providerStatus: response.status };
   }
 }
 
@@ -238,8 +325,17 @@ export class OpenAiTranslationProvider implements TranslationProvider {
     }
 
     if (!response.ok) {
+      // Same reasoning as the transcription path: the reason the call was
+      // rejected is the whole diagnostic, and a wrong model name here is
+      // exactly as likely as it is there.
+      const failure = await describeProviderFailure(response);
       this.logger.warn(
-        { provider: 'openai', model, status: response.status },
+        {
+          provider: 'openai',
+          model,
+          ...failure,
+          providerMessage: scrubForLog(failure.providerMessage),
+        },
         'Translation provider returned an error',
       );
       throw new LingoLiveError(

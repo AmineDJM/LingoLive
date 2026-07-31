@@ -123,6 +123,14 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
           {session.errorCode ? (
             <Alert tone="danger" title={t.t('errors.generic')}>
               {localisedError(t, session.errorCode)}
+              {session.errorReference ? (
+                <span
+                  className="mt-2 block text-[13px] text-ink-muted"
+                  data-testid="error-reference"
+                >
+                  {t.t('errors.referenceId', { requestId: session.errorReference })}
+                </span>
+              ) : null}
             </Alert>
           ) : null}
 

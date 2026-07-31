@@ -228,6 +228,8 @@ export const en = {
     unsupportedBrowser: 'This browser cannot capture audio. Try Chrome, Edge or Safari.',
     insecureContext: 'Microphone access requires a secure (HTTPS) connection.',
     serverUnavailable: 'LingoLive is temporarily unavailable.',
+    transcriptionUnavailable: 'Live transcription is unavailable right now.',
+    notConfigured: 'This LingoLive server is not finished being set up.',
     translationUnavailable: 'Translation is unavailable right now. Showing the original text.',
     referenceId: 'Reference: {requestId}',
   },

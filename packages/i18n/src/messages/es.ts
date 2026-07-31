@@ -224,6 +224,8 @@ export const es: Messages = {
     unsupportedBrowser: 'Este navegador no puede capturar audio. Prueba Chrome, Edge o Safari.',
     insecureContext: 'El acceso al micrófono requiere una conexión segura (HTTPS).',
     serverUnavailable: 'LingoLive no está disponible temporalmente.',
+    transcriptionUnavailable: 'La transcripción en directo no está disponible ahora mismo.',
+    notConfigured: 'Este servidor de LingoLive aún no está terminado de configurar.',
     translationUnavailable:
       'La traducción no está disponible ahora mismo. Se muestra el texto original.',
     referenceId: 'Referencia: {requestId}',

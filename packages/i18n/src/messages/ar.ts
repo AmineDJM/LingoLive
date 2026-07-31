@@ -228,6 +228,8 @@ export const ar: Messages = {
     unsupportedBrowser: 'لا يستطيع هذا المتصفح التقاط الصوت. جرّب Chrome أو Edge أو Safari.',
     insecureContext: 'يتطلب الوصول إلى الميكروفون اتصالًا آمنًا (HTTPS).',
     serverUnavailable: 'LingoLive غير متاح مؤقتًا.',
+    transcriptionUnavailable: 'التفريغ المباشر غير متاح حاليًا.',
+    notConfigured: 'لم يكتمل إعداد خادم LingoLive هذا بعد.',
     translationUnavailable: 'الترجمة غير متاحة حاليًا. يتم عرض النص الأصلي.',
     referenceId: 'المرجع: {requestId}',
   },

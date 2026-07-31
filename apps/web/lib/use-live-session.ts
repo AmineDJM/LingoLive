@@ -13,6 +13,7 @@ import {
 } from '@lingolive/realtime-core';
 import type { ServerEvent, TranscriptionConfig } from '@lingolive/contracts';
 import { createApiClient, ensureToken } from './client';
+import { errorCodeOf, errorReference as referenceFor } from './errors';
 
 /**
  * The browser side of a live session.
@@ -39,6 +40,7 @@ export interface LiveSessionState {
   readonly elapsedSeconds: number;
   readonly participantCount: number;
   readonly errorCode: string | null;
+  readonly errorReference: string | null;
   readonly connectionStatus: string;
 }
 
@@ -49,6 +51,8 @@ export function useLiveSession(options: UseLiveSessionOptions) {
   const [elapsedSeconds, setElapsed] = useState(0);
   const [participantCount, setParticipantCount] = useState(0);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  // Kept alongside the code so the UI can show a reference someone can quote.
+  const [errorReference, setErrorReference] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState('idle');
   const [readingLanguage, setReadingLanguage] = useState(options.readingLanguage);
 
@@ -132,6 +136,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
 
   const start = useCallback(async () => {
     setErrorCode(null);
+    setErrorReference(null);
     dispatch({ type: 'TOKEN_REQUESTED' });
 
     try {
@@ -213,11 +218,9 @@ export function useLiveSession(options: UseLiveSessionOptions) {
         dispatch({ type: 'AUDIO_STARTED' });
       }
     } catch (error) {
-      const code =
-        typeof error === 'object' && error && 'code' in error
-          ? String((error as { code: unknown }).code)
-          : 'INTERNAL_ERROR';
+      const code = errorCodeOf(error);
       setErrorCode(code);
+      setErrorReference(referenceFor(error, code));
       dispatch({ type: 'ERROR', code, message: 'Could not start the session', retryable: true });
     }
   }, [
@@ -285,9 +288,19 @@ export function useLiveSession(options: UseLiveSessionOptions) {
       elapsedSeconds,
       participantCount,
       errorCode,
+      errorReference,
       connectionStatus,
     }),
-    [context, lines, sessionId, elapsedSeconds, participantCount, errorCode, connectionStatus],
+    [
+      context,
+      lines,
+      sessionId,
+      elapsedSeconds,
+      participantCount,
+      errorCode,
+      errorReference,
+      connectionStatus,
+    ],
   );
 
   return {

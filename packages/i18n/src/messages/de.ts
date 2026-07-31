@@ -226,6 +226,8 @@ export const de: Messages = {
       'Dieser Browser kann kein Audio aufnehmen. Probiere Chrome, Edge oder Safari.',
     insecureContext: 'Mikrofonzugriff erfordert eine sichere Verbindung (HTTPS).',
     serverUnavailable: 'LingoLive ist vorübergehend nicht verfügbar.',
+    transcriptionUnavailable: 'Live-Transkription ist im Moment nicht verfügbar.',
+    notConfigured: 'Dieser LingoLive-Server ist noch nicht fertig eingerichtet.',
     translationUnavailable:
       'Übersetzung ist gerade nicht verfügbar. Der Originaltext wird angezeigt.',
     referenceId: 'Referenz: {requestId}',

@@ -44,6 +44,18 @@ export function localisedError(t: Translator, code: string): string {
       return t.t('errors.network');
     case 'SERVICE_UNAVAILABLE':
       return t.t('errors.serverUnavailable');
+    // The provider call failed or was never configured. Both are the
+    // operator's problem, and saying so beats "an error occurred" — which
+    // tells a user nothing and tells whoever they report it to even less.
+    case 'AI_PROVIDER_UNAVAILABLE':
+      return t.t('errors.transcriptionUnavailable');
+    case 'AI_PROVIDER_NOT_CONFIGURED':
+      return t.t('errors.notConfigured');
+    case 'RATE_LIMITED':
+      return t.t('errors.serverUnavailable');
+    case 'SESSION_EXPIRED':
+    case 'SESSION_MAX_DURATION_REACHED':
+      return t.t('errors.sessionTooLong');
     default:
       return t.t('errors.generic');
   }
@@ -54,4 +66,39 @@ export function errorCodeOf(error: unknown): string {
   return typeof error === 'object' && error && 'code' in error
     ? String((error as { code: unknown }).code)
     : 'INTERNAL_ERROR';
+}
+
+/**
+ * The one line that makes a report actionable.
+ *
+ * Every API failure carries a `requestId` that points at the exact server log
+ * entry, and it is safe to show: it contains no transcript, no token and no
+ * identity. Without it, "an error occurred" is all anyone — the user, support,
+ * whoever wrote the code — ever has to go on.
+ *
+ * Shown small, under the human-readable message. The message is for the
+ * person; this is for whoever they forward it to.
+ */
+export function errorReference(error: unknown, code: string): string {
+  const details =
+    typeof error === 'object' && error && 'details' in error
+      ? (error as { details?: Record<string, unknown> }).details
+      : undefined;
+
+  const parts = [code];
+
+  // When an upstream provider is the one refusing, its own code says which
+  // refusal it is — a key that was rejected, a model the account cannot use, a
+  // parameter in the wrong place. Without it every one of those looks
+  // identical from here, which cost several rounds of guessing once.
+  //
+  // Safe to display: these are the provider's vocabulary, not its prose. The
+  // message, which can quote what the user typed, is deliberately not sent.
+  const providerCode = details?.['providerCode'] ?? details?.['providerType'];
+  if (typeof providerCode === 'string' && providerCode) parts.push(providerCode);
+
+  const requestId = details?.['requestId'];
+  if (typeof requestId === 'string' && requestId) parts.push(requestId);
+
+  return parts.join(' · ');
 }

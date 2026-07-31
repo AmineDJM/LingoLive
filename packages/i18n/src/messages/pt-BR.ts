@@ -224,6 +224,8 @@ export const ptBR: Messages = {
     unsupportedBrowser: 'Este navegador não consegue capturar áudio. Tente Chrome, Edge ou Safari.',
     insecureContext: 'O acesso ao microfone exige uma conexão segura (HTTPS).',
     serverUnavailable: 'O LingoLive está temporariamente indisponível.',
+    transcriptionUnavailable: 'A transcrição ao vivo está indisponível no momento.',
+    notConfigured: 'Este servidor do LingoLive ainda não terminou de ser configurado.',
     translationUnavailable: 'A tradução está indisponível no momento. Exibindo o texto original.',
     referenceId: 'Referência: {requestId}',
   },

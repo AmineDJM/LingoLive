@@ -161,6 +161,39 @@ The server chooses which one a client should use and returns it in the token
 response, so switching providers or transports is a server-side decision. See
 ADR-0004 for why the mobile transport is what it is.
 
+## Minting the provider credential
+
+`POST /api/v1/realtime/transcription-token` is the only place the standard
+provider key is used. It returns a `config` containing a short-lived client
+secret; `POST /api/v1/realtime/translation-token` returns a hub token only, for
+clients that render someone else's transcript and never send audio.
+
+The provider request body is **not** free-form, and getting it wrong is the one
+failure this path cannot discover on its own: the mock provider never exercises
+it, and a real attempt costs money and an account.
+
+| `OPENAI_REALTIME_SESSION_PATH` | Body                                                        |
+| ------------------------------ | ----------------------------------------------------------- |
+| `/client_secrets` (default)    | `session.audio.input.transcription.{model,language,prompt}` |
+| `/transcription_sessions`      | `input_audio_transcription.{model,language,prompt}`         |
+
+Both nest the model inside a `transcription` object. Sending `model` one level
+up, at `session.audio.input`, is rejected as an unknown parameter — a 400 that
+reached users as an unexplained error on the first tap of Listen. The shape
+follows the configured path, so changing that one variable moves between the two
+endpoints without a code change. `apps/api/src/ai/openai-provider.test.ts` pins
+both shapes.
+
+`spokenLanguage: 'auto'` is a LingoLive concept, not a language code: the field
+is omitted entirely rather than sent as the string `auto`.
+
+When the provider refuses, its `type`, `code` and `param` are logged and
+returned in the error `details`, and the web client shows them next to the
+request id. They are provider vocabulary — `invalid_api_key`, `model_not_found`,
+a parameter path — and carry nothing anyone said. The provider's `message` is
+logged but never returned: it quotes the value that caused the error, and
+vocabulary hints are typed by the user.
+
 ## Partial text and accessibility
 
 Partial text is visually distinct and is **never** announced to a screen reader.

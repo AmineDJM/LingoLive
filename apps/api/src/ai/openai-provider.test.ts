@@ -1,0 +1,235 @@
+import { describe, expect, it } from 'vitest';
+import { parseServerEnv } from '@lingolive/config';
+import { createSilentLogger } from '@lingolive/logging';
+import { LingoLiveError } from '@lingolive/contracts';
+import { OpenAiTranscriptionProvider } from './openai-provider.js';
+import type { TranscriptionCredentialRequest } from './types.js';
+
+/**
+ * The request LingoLive sends to mint an ephemeral transcription credential.
+ *
+ * This is the one call in the product that cannot be exercised by the mock
+ * provider and costs money to try for real, so it shipped unverified — with
+ * the model one level too high in the body. The provider answered 400, the
+ * user saw "an error occurred", and nothing anywhere said why.
+ *
+ * These tests pin the wire shape and the diagnostics. They assert what leaves
+ * the process and what is reported when the answer is a rejection, because
+ * those are the two things that were wrong.
+ */
+
+function providerFor(
+  fetchFn: typeof fetch,
+  overrides: Record<string, string> = {},
+): OpenAiTranscriptionProvider {
+  const env = parseServerEnv({
+    ...process.env,
+    AI_PROVIDER: 'openai',
+    OPENAI_API_KEY: 'sk-test-key-not-a-real-credential',
+    OPENAI_TRANSCRIPTION_MODEL: 'gpt-live-transcribe',
+    OPENAI_TRANSLATION_MODEL: 'gpt-5.6-luna',
+    ...overrides,
+  });
+  return new OpenAiTranscriptionProvider(env, createSilentLogger(), fetchFn);
+}
+
+const baseRequest: TranscriptionCredentialRequest = {
+  sessionId: 'session-1',
+  spokenLanguage: 'auto',
+  vocabularyHints: [],
+  platform: 'web',
+  preferredTransport: 'auto',
+  ttlSeconds: 60,
+};
+
+/** The parameters this provider is allowed to send. Written out rather than
+ * inferred, so a test reads as a specification of the wire format. */
+interface SentBody {
+  expires_after?: { anchor: string; seconds: number };
+  session?: {
+    type?: string;
+    audio?: {
+      input?: {
+        transcription?: { model?: string; language?: string; prompt?: string };
+        /** Only ever present if the old bug comes back. */
+        model?: string;
+      };
+    };
+  };
+  input_audio_transcription?: { model?: string; language?: string; prompt?: string };
+}
+
+interface RecordedCall {
+  url: string;
+  body: SentBody;
+}
+
+/** Captures the outgoing request and answers with a valid credential. */
+function recordingFetch(): { calls: RecordedCall[]; fetchFn: typeof fetch } {
+  const calls: RecordedCall[] = [];
+  const fetchFn = (async (url: string | URL, init?: RequestInit) => {
+    calls.push({
+      url: String(url),
+      body: JSON.parse(String(init?.body ?? '{}')) as SentBody,
+    });
+    return new Response(
+      JSON.stringify({ value: 'ek_ephemeral_secret', expires_at: 1_800_000_000 }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+  }) as unknown as typeof fetch;
+  return { calls, fetchFn };
+}
+
+describe('OpenAI transcription credential request', () => {
+  it('nests the model under audio.input.transcription, not audio.input', async () => {
+    const { calls, fetchFn } = recordingFetch();
+    await providerFor(fetchFn).createEphemeralCredential(baseRequest);
+
+    const input = calls[0]?.body.session?.audio?.input;
+    expect(calls[0]?.body.session?.type).toBe('transcription');
+    expect(input?.transcription?.model).toBe('gpt-live-transcribe');
+    // The bug: these sat directly on `audio.input`, which the API rejects as
+    // an unknown parameter.
+    expect(input?.model).toBeUndefined();
+  });
+
+  it('sends the TTL as expires_after so the credential cannot outlive the session', async () => {
+    const { calls, fetchFn } = recordingFetch();
+    await providerFor(fetchFn).createEphemeralCredential({ ...baseRequest, ttlSeconds: 45 });
+
+    expect(calls[0]?.body.expires_after).toEqual({ anchor: 'created_at', seconds: 45 });
+  });
+
+  it('omits the language entirely when it is auto-detected', async () => {
+    const { calls, fetchFn } = recordingFetch();
+    await providerFor(fetchFn).createEphemeralCredential(baseRequest);
+
+    // `auto` is a LingoLive concept, not a language code. Sending the literal
+    // string would be rejected; the absence of the field is what means "detect".
+    const transcription = calls[0]?.body.session?.audio?.input?.transcription ?? {};
+    expect(Object.keys(transcription)).not.toContain('language');
+  });
+
+  it('passes a chosen spoken language through', async () => {
+    const { calls, fetchFn } = recordingFetch();
+    await providerFor(fetchFn).createEphemeralCredential({ ...baseRequest, spokenLanguage: 'fr' });
+
+    expect(calls[0]?.body.session?.audio?.input?.transcription?.language).toBe('fr');
+  });
+
+  it('switches to the legacy body when pointed at the legacy endpoint', async () => {
+    // The reason OPENAI_REALTIME_SESSION_PATH is configurable: the two entry
+    // points do not take the same body, so changing the path must change the
+    // shape too or the switch is useless.
+    const { calls, fetchFn } = recordingFetch();
+    await providerFor(fetchFn, {
+      OPENAI_REALTIME_SESSION_PATH: '/transcription_sessions',
+    }).createEphemeralCredential(baseRequest);
+
+    expect(calls[0]?.url).toContain('/transcription_sessions');
+    expect(calls[0]?.body.input_audio_transcription?.model).toBe('gpt-live-transcribe');
+    expect(calls[0]?.body.session).toBeUndefined();
+  });
+
+  it('never puts the API key anywhere but the Authorization header', async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const fetchFn = (async (url: string | URL, init?: RequestInit) => {
+      calls.push({ url: String(url), ...(init ? { init } : {}) });
+      return new Response(JSON.stringify({ value: 'ek_secret' }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    await providerFor(fetchFn).createEphemeralCredential(baseRequest);
+
+    expect(calls[0]?.url).not.toContain('sk-test-key');
+    expect(String(calls[0]?.init?.body)).not.toContain('sk-test-key');
+  });
+});
+
+describe('OpenAI transcription failures', () => {
+  function rejectingFetch(status: number, payload: unknown): typeof fetch {
+    return (async () =>
+      new Response(JSON.stringify(payload), {
+        status,
+        headers: { 'content-type': 'application/json' },
+      })) as unknown as typeof fetch;
+  }
+
+  it("reports the provider's own reason instead of an unexplained failure", async () => {
+    const fetchFn = rejectingFetch(400, {
+      error: {
+        message: "Unknown parameter: 'session.audio.input.model'.",
+        type: 'invalid_request_error',
+        code: 'unknown_parameter',
+        param: 'session.audio.input.model',
+      },
+    });
+
+    const error = await providerFor(fetchFn)
+      .createEphemeralCredential(baseRequest)
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(LingoLiveError);
+    const details = (error as LingoLiveError).details;
+    expect(details?.providerStatus).toBe(400);
+    expect(details?.providerType).toBe('invalid_request_error');
+    expect(details?.providerCode).toBe('unknown_parameter');
+    expect(details?.providerParam).toBe('session.audio.input.model');
+  });
+
+  it('does not surface the provider message, which can quote what the user typed', async () => {
+    // Vocabulary hints are typed by the user and are echoed back in provider
+    // error messages. The type/code/param triple is provider vocabulary and is
+    // safe; the message is not, so it stays in the log and off the wire.
+    const fetchFn = rejectingFetch(400, {
+      error: {
+        message: 'Invalid prompt: "Dr Amina Haddad, mitral valve"',
+        type: 'invalid_request_error',
+      },
+    });
+
+    const error = await providerFor(fetchFn)
+      .createEphemeralCredential({ ...baseRequest, vocabularyHints: ['Dr Amina Haddad'] })
+      .catch((caught: unknown) => caught);
+
+    expect(JSON.stringify((error as LingoLiveError).details)).not.toContain('Amina');
+  });
+
+  it('maps a rate limit to RATE_LIMITED and everything else to AI_PROVIDER_UNAVAILABLE', async () => {
+    const limited = await providerFor(rejectingFetch(429, { error: { type: 'rate_limit_error' } }))
+      .createEphemeralCredential(baseRequest)
+      .catch((caught: unknown) => caught);
+    expect((limited as LingoLiveError).code).toBe('RATE_LIMITED');
+
+    const rejected = await providerFor(rejectingFetch(401, { error: { code: 'invalid_api_key' } }))
+      .createEphemeralCredential(baseRequest)
+      .catch((caught: unknown) => caught);
+    expect((rejected as LingoLiveError).code).toBe('AI_PROVIDER_UNAVAILABLE');
+    expect((rejected as LingoLiveError).details?.providerCode).toBe('invalid_api_key');
+  });
+
+  it('still reports the status when the body is not JSON', async () => {
+    // A gateway between us and the provider answers HTML. The diagnostic helper
+    // must not throw over it and hide the real failure.
+    const fetchFn = (async () =>
+      new Response('<html><body>502 Bad Gateway</body></html>', {
+        status: 502,
+      })) as unknown as typeof fetch;
+
+    const error = await providerFor(fetchFn)
+      .createEphemeralCredential(baseRequest)
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(LingoLiveError);
+    expect((error as LingoLiveError).details?.providerStatus).toBe(502);
+  });
+
+  it('accepts either documented shape for the returned secret', async () => {
+    const nested = (async () =>
+      new Response(JSON.stringify({ client_secret: { value: 'ek_nested', expires_at: 1_800 } }), {
+        status: 200,
+      })) as unknown as typeof fetch;
+
+    const credential = await providerFor(nested).createEphemeralCredential(baseRequest);
+    expect(credential.clientSecret).toBe('ek_nested');
+  });
+});
