@@ -1,77 +1,72 @@
 # =============================================================================
-# LingoLive — Render Blueprint (staging)
+# LingoLive — Render Blueprint (production)
 # -----------------------------------------------------------------------------
-# One working environment:
+# Apply this as a SECOND Blueprint instance, path
+# `infra/render.production.yaml`, once there is a verified domain. Until then
+# it cannot boot: APP_BASE_URL, WEB_BASE_URL, API_BASE_URL and
+# CORS_ALLOWED_ORIGINS must be real https URLs, and the configuration schema
+# refuses anything else outside development.
 #
-#   lingolive-api-staging     Fastify + WebSocket           (web service)
-#   lingolive-web-staging     Next.js                       (web service)
-#   lingolive-worker-staging  retention & maintenance jobs  (worker)
-#   lingolive-db-staging      PostgreSQL 16
-#   lingolive-redis-staging   Redis (fan-out, rate limits, replay guard)
+#   lingolive-api-production     Fastify + WebSocket, 2 instances
+#   lingolive-web-production     Next.js, 2 instances
+#   lingolive-worker-production  retention & maintenance jobs
+#   lingolive-db-production      PostgreSQL 16
+#   lingolive-redis-production   Redis
 #
-# Production is NOT here. It lives in infra/render.production.yaml and is
-# applied as a second Blueprint when there is a domain to point it at.
+# Nothing here deploys on push. A production release is a deliberate act:
+# Render dashboard → the service → Manual Deploy. Order: API (its pre-deploy
+# command runs the migrations), then worker, then web.
 #
-# The reason is money and failure. Production needs a real domain: without one,
-# APP_BASE_URL and friends cannot be filled and the API refuses to boot — so a
-# combined Blueprint provisions a production-sized database and two standard
-# instances that immediately fail, and bills for them. Splitting means applying
-# this file gives one environment that works, on the cheapest plans, for the
-# price of a coffee.
+# Before applying, fill in the dashboard:
+#   APP_BASE_URL, WEB_BASE_URL, API_BASE_URL, CORS_ALLOWED_ORIGINS
+#   OPENAI_API_KEY, ADMIN_EMAILS
+#   and on the web service: NEXT_PUBLIC_API_URL, NEXT_PUBLIC_WEB_URL,
+#   NEXT_PUBLIC_SITE_URL
 #
-# Apply with the Render dashboard (Blueprints → New Blueprint Instance), path
-# `infra/render.yaml`. See docs/DEPLOYMENT.md.
-#
-# No service pins a `branch`: each follows the branch the Blueprint is synced
-# from, chosen in the dashboard, so this file validates on any repository.
-#
-# Secrets are NEVER in this file. Two values must be entered in the dashboard
-# before the first deploy: OPENAI_API_KEY and ADMIN_EMAILS.
+# These plans cost real money every month whether or not anyone uses the
+# product. Do not apply this file to "see if it works" — infra/render.yaml is
+# for that.
 # =============================================================================
 
-previewsEnabled: true
-previewsExpireAfterDays: 7
+previewsEnabled: false
 
 databases:
-  - name: lingolive-db-staging
+  - name: lingolive-db-production
     databaseName: lingolive
     user: lingolive
-    plan: basic-256mb
+    plan: pro-4gb
     postgresMajorVersion: '16'
-    ipAllowList: [] # Render-internal only.
+    ipAllowList: []
 
 services:
-  # ---------------------------------------------------------------------------
-  # Redis / Key-value
-  # ---------------------------------------------------------------------------
   - type: keyvalue
-    name: lingolive-redis-staging
-    plan: starter
+    name: lingolive-redis-production
+    plan: standard
     region: frankfurt
     ipAllowList: []
-    maxmemoryPolicy: noeviction # Replay-guard keys must not be evicted early.
+    maxmemoryPolicy: noeviction
 
   # ---------------------------------------------------------------------------
-  # API — staging
+  # API — production
   # ---------------------------------------------------------------------------
   - type: web
-    name: lingolive-api-staging
+    name: lingolive-api-production
     runtime: node
-    plan: starter
+    plan: standard
     region: frankfurt
     rootDir: .
-    autoDeploy: true
+    # Production never deploys on push. A release is a deliberate act.
+    autoDeploy: false
     buildCommand: |
       corepack enable
       pnpm install --frozen-lockfile
       pnpm run build:packages
       pnpm exec prisma generate --schema prisma/schema.prisma
       pnpm --filter @lingolive/api build
-    # Migrations run before the new instance takes traffic, and never in
-    # parallel with the old one serving it.
     preDeployCommand: pnpm exec prisma migrate deploy --schema prisma/schema.prisma
     startCommand: node apps/api/dist/server.js
     healthCheckPath: /health
+    numInstances: 2 # Realtime fan-out is Redis-backed, so instances are interchangeable.
     envVars:
       - key: NODE_VERSION
         value: 22.20.0
@@ -80,31 +75,31 @@ services:
       - key: NODE_ENV
         value: production
       - key: APP_ENV
-        value: staging
+        value: production
       - key: LOG_LEVEL
         value: info
       - key: PORT
         value: '10000'
       - key: DATABASE_URL
-        fromDatabase: { name: lingolive-db-staging, property: connectionString }
+        fromDatabase:
+          { name: lingolive-db-production, property: connectionString }
       - key: REDIS_URL
         fromService:
           {
-            name: lingolive-redis-staging,
+            name: lingolive-redis-production,
             type: keyvalue,
             property: connectionString,
           }
       - key: APP_BASE_URL
-        fromService: { name: lingolive-web-staging, type: web, property: host }
+        sync: false # https://lingolive.app once the domain is verified.
       - key: WEB_BASE_URL
-        fromService: { name: lingolive-web-staging, type: web, property: host }
+        sync: false
       - key: API_BASE_URL
-        fromService: { name: lingolive-api-staging, type: web, property: host }
+        sync: false
       - key: CORS_ALLOWED_ORIGINS
-        fromService: { name: lingolive-web-staging, type: web, property: host }
+        sync: false
       - key: DEEP_LINK_SCHEME
         value: lingolive
-      # --- Secrets: fill in the dashboard, never here -----------------------
       - key: SESSION_SIGNING_SECRET
         generateValue: true
       - key: AUTH_SECRET
@@ -112,81 +107,64 @@ services:
       - key: ADMIN_API_TOKEN
         generateValue: true
       - key: TRANSCRIPT_ENCRYPTION_KEY
-        # Render generates it; the API derives the AES-256 key from it. Nobody
-        # has to produce base64-encoded random bytes by hand. Once a deploy has
-        # written a transcript, changing this value orphans it.
         generateValue: true
       - key: TRANSCRIPT_ENCRYPTION_KEY_VERSION
         value: '1'
       - key: OPENAI_API_KEY
-        sync: false # Server-side only. Never in a web or mobile variable.
+        sync: false
       - key: ADMIN_EMAILS
         sync: false
-      # --- AI ---------------------------------------------------------------
       - key: AI_PROVIDER
         value: openai
       - key: OPENAI_TRANSCRIPTION_MODEL
         value: gpt-live-transcribe
       - key: OPENAI_TRANSLATION_MODEL
-        # A TEXT/chat model: translation is a /chat/completions call, never a
-        # realtime or speech-to-speech model.
-        #
-        # `luna` is the fast, low-cost tier of the 5.6 family, which is the
-        # right trade here — this call sits between a sentence being spoken and
-        # someone reading it, on short text, at high volume. A larger reasoning
-        # model buys accuracy nobody perceives and latency everybody does.
-        #
-        # Verified against the OpenAI model list on 2026-07-31. Re-check at
-        # deploy time: `pnpm check:provider --all` asks your own account and
-        # proves the answer. The code deliberately has no default, so this
-        # value is visible and changeable here rather than buried.
+        # As above. Re-verify with `pnpm check:provider --all` before a release.
         value: gpt-5.6-luna
       - key: REALTIME_TOKEN_TTL_SECONDS
         value: '60'
-      # If starting a session returns 404 from the provider, the other realtime
-      # entry point is /transcription_sessions. Changeable here, no deploy.
       - key: OPENAI_REALTIME_SESSION_PATH
         value: /client_secrets
-      # --- Quotas & cost ----------------------------------------------------
       - key: GUEST_MINUTES_PER_MONTH
         value: '30'
       - key: FREE_MINUTES_PER_MONTH
         value: '120'
       - key: PRO_MINUTES_PER_MONTH
         value: '6000'
+      # Deliberately low starting values. The circuit breaker refusing new
+      # sessions is recoverable in one dashboard edit; an unbounded provider
+      # bill is not. Raise them from the operator console once real usage is
+      # visible — no deploy needed.
       - key: DAILY_COST_LIMIT_USD
         value: '25'
       - key: MONTHLY_COST_LIMIT_USD
         value: '200'
       - key: COST_CIRCUIT_BREAKER_ENABLED
         value: 'true'
-      # --- Observability (optional) ----------------------------------------
       - key: SENTRY_DSN
         value: '' # Optional; empty means the integration is off.
       - key: SENTRY_ENVIRONMENT
-        value: staging
+        value: production
       - key: POSTHOG_KEY
         value: '' # Optional; empty means the integration is off.
       - key: ANALYTICS_ENABLED
         value: 'false'
-      # --- Switches ---------------------------------------------------------
-      # The configuration schema refuses this outside development, and the
-      # routes are not even mounted there. Staging is production-shaped.
+      # Forced off in production by the config schema as well — belt and braces.
       - key: ENABLE_DEV_SIMULATOR
         value: 'false'
       - key: ENABLE_REQUEST_LOGGING
-        value: 'true'
+        value: 'false'
 
   # ---------------------------------------------------------------------------
-  # Web — staging
+  # Web — production
   # ---------------------------------------------------------------------------
   - type: web
-    name: lingolive-web-staging
+    name: lingolive-web-production
     runtime: node
-    plan: starter
+    plan: standard
     region: frankfurt
     rootDir: .
-    autoDeploy: true
+    autoDeploy: false
     buildCommand: |
       corepack enable
       pnpm install --frozen-lockfile
@@ -194,6 +172,7 @@ services:
       pnpm --filter @lingolive/web build
     startCommand: pnpm --filter @lingolive/web start
     healthCheckPath: /en
+    numInstances: 2
     envVars:
       - key: NODE_VERSION
         value: 22.20.0
@@ -203,33 +182,28 @@ services:
         value: production
       - key: PORT
         value: '10000'
-      # Public by definition — these ship to the browser. No secret belongs here.
       - key: NEXT_PUBLIC_APP_ENV
-        value: staging
+        value: production
       - key: NEXT_PUBLIC_API_URL
-        fromService: { name: lingolive-api-staging, type: web, property: host }
+        sync: false
       - key: NEXT_PUBLIC_WEB_URL
-        fromService: { name: lingolive-web-staging, type: web, property: host }
+        sync: false
       - key: NEXT_PUBLIC_SITE_URL
-        fromService: { name: lingolive-web-staging, type: web, property: host }
+        sync: false
       - key: NEXT_PUBLIC_SENTRY_DSN
         value: '' # Optional; empty means the integration is off.
       - key: NEXT_PUBLIC_POSTHOG_KEY
         value: '' # Optional; empty means the integration is off.
-      # Staging must never be indexed.
       - key: NEXT_PUBLIC_ALLOW_INDEXING
-        value: 'false'
+        value: 'true'
 
-  # ---------------------------------------------------------------------------
-  # Worker — retention, expiry, deletion requests, cost roll-up
-  # ---------------------------------------------------------------------------
   - type: worker
-    name: lingolive-worker-staging
+    name: lingolive-worker-production
     runtime: node
     plan: starter
     region: frankfurt
     rootDir: .
-    autoDeploy: true
+    autoDeploy: false
     buildCommand: |
       corepack enable
       pnpm install --frozen-lockfile
@@ -246,23 +220,21 @@ services:
       - key: NODE_ENV
         value: production
       - key: APP_ENV
-        value: staging
+        value: production
       - key: DATABASE_URL
-        fromDatabase: { name: lingolive-db-staging, property: connectionString }
+        fromDatabase:
+          { name: lingolive-db-production, property: connectionString }
       - key: REDIS_URL
         fromService:
           {
-            name: lingolive-redis-staging,
+            name: lingolive-redis-production,
             type: keyvalue,
             property: connectionString,
           }
-      # Pulled from the API, never entered twice. Two services holding
-      # different encryption keys is a bug that only surfaces the first time
-      # the worker touches encrypted data.
       - key: TRANSCRIPT_ENCRYPTION_KEY
         fromService:
           {
-            name: lingolive-api-staging,
+            name: lingolive-api-production,
             type: web,
             envVarKey: TRANSCRIPT_ENCRYPTION_KEY,
           }
@@ -271,13 +243,13 @@ services:
       - key: SESSION_SIGNING_SECRET
         fromService:
           {
-            name: lingolive-api-staging,
+            name: lingolive-api-production,
             type: web,
             envVarKey: SESSION_SIGNING_SECRET,
           }
       - key: AUTH_SECRET
         fromService:
-          { name: lingolive-api-staging, type: web, envVarKey: AUTH_SECRET }
+          { name: lingolive-api-production, type: web, envVarKey: AUTH_SECRET }
       # Retention, expiry and deletion only. It never calls an AI provider,
       # never serves a request and never emits a URL, so OPENAI_API_KEY,
       # ADMIN_API_TOKEN and the base URLs are all deliberately absent — the

@@ -25,7 +25,10 @@ import path from 'node:path';
 import { parse as parseYaml } from 'yaml';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const BLUEPRINT = path.join(ROOT, 'infra', 'render.yaml');
+const BLUEPRINTS = [
+  path.join(ROOT, 'infra', 'render.yaml'),
+  path.join(ROOT, 'infra', 'render.production.yaml'),
+];
 
 /**
  * Stand-ins for values only Render can provide. Shaped to satisfy the schema's
@@ -62,7 +65,6 @@ function envForService(service) {
 }
 
 async function main() {
-  const blueprint = parseYaml(readFileSync(BLUEPRINT, 'utf8'));
   const { parseServerEnv } = await import(
     path.join(ROOT, 'packages', 'config', 'dist', 'index.js')
   ).catch(() => {
@@ -71,8 +73,31 @@ async function main() {
 
   const failures = [];
   let checked = 0;
+  let problems = 0;
 
-  console.log('\nValidating infra/render.yaml against the API configuration schema\n');
+  for (const file of BLUEPRINTS) {
+    problems += validate(parseServerEnv, file, failures, (n) => (checked += n));
+  }
+
+  if (failures.length === 0 && problems === 0) {
+    console.log(`\n✓ ${checked} service(s) would boot.\n`);
+    return;
+  }
+
+  for (const failure of failures) {
+    console.log(`\n${failure.name}:`);
+    for (const line of failure.message.split('\n').slice(0, 20)) console.log(`  ${line}`);
+  }
+  console.log('');
+  process.exit(1);
+}
+
+function validate(parseServerEnv, file, failures, countChecked) {
+  const blueprint = parseYaml(readFileSync(file, 'utf8'));
+  const label = path.relative(ROOT, file);
+  let checked = 0;
+
+  console.log(`\nValidating ${label} against the API configuration schema\n`);
 
   for (const service of blueprint.services ?? []) {
     // Only Node services boot the API config; the web app and key-value stores
@@ -83,6 +108,7 @@ async function main() {
     if (!runsTheApi) continue;
 
     checked += 1;
+    countChecked(1);
     try {
       parseServerEnv(envForService(service));
       console.log(`  ✓ ${service.name}`);
@@ -149,29 +175,18 @@ async function main() {
     for (const problem of uniqueStructural) console.log(`  ✗ ${problem}`);
   }
 
-  if (failures.length === 0 && uniqueStructural.length === 0) {
-    console.log(`\n✓ ${checked} service(s) would boot.\n`);
-
-    const mustFill = [];
-    for (const service of blueprint.services ?? []) {
-      for (const entry of service.envVars ?? []) {
-        if (entry.sync === false) mustFill.push(`${service.name} → ${entry.key}`);
-      }
+  const mustFill = [];
+  for (const service of blueprint.services ?? []) {
+    for (const entry of service.envVars ?? []) {
+      if (entry.sync === false) mustFill.push(`${service.name} → ${entry.key}`);
     }
-    if (mustFill.length > 0) {
-      console.log('Values a human still has to enter in the Render dashboard:');
-      for (const item of mustFill) console.log(`  ${item}`);
-      console.log('');
-    }
-    return;
+  }
+  if (mustFill.length > 0) {
+    console.log(`  ${checked} service(s) checked. To enter in the dashboard first:`);
+    for (const item of mustFill) console.log(`    ${item}`);
   }
 
-  for (const failure of failures) {
-    console.log(`\n${failure.name}:`);
-    for (const line of failure.message.split('\n').slice(0, 20)) console.log(`  ${line}`);
-  }
-  console.log('');
-  process.exit(1);
+  return uniqueStructural.length;
 }
 
 main().catch((error) => {

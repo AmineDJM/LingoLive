@@ -63,7 +63,7 @@ packages/
   logging/         structured logs that cannot carry transcript content
   observability/   optional analytics and error reporting, off by default
 prisma/         schema, migrations, seed
-infra/          docker-compose, Render blueprint, k6 load tests, scripts
+infra/          docker-compose, Render blueprints (staging + production), k6, scripts
 store/          App Store and Play listings in 7 languages
 docs/           architecture, security, privacy, deployment, runbook, ADRs
 ```
