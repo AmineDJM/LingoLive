@@ -160,9 +160,7 @@ describe('billing provider requirements', () => {
   });
 
   it('requires at least one RevenueCat key', () => {
-    expect(() => parseServerEnv({ ...base, BILLING_PROVIDER: 'revenuecat' })).toThrow(
-      /REVENUECAT/,
-    );
+    expect(() => parseServerEnv({ ...base, BILLING_PROVIDER: 'revenuecat' })).toThrow(/REVENUECAT/);
   });
 
   it('defaults to the mock billing provider so the app runs without accounts', () => {

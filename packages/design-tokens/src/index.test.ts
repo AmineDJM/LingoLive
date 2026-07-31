@@ -20,7 +20,12 @@ describe('colour contrast (WCAG 2.2 AA)', () => {
     ['secondary text on surface', lightTheme.textSecondary, lightTheme.surface, 'normal'],
     ['final transcript on background', lightTheme.transcriptFinal, lightTheme.background, 'normal'],
     // Partial transcript is intentionally lower contrast, but must stay legible.
-    ['partial transcript on background', lightTheme.transcriptPartial, lightTheme.background, 'normal'],
+    [
+      'partial transcript on background',
+      lightTheme.transcriptPartial,
+      lightTheme.background,
+      'normal',
+    ],
     ['text on primary button', lightTheme.textOnPrimary, lightTheme.primary, 'large'],
     ['dark body text', darkTheme.text, darkTheme.background, 'normal'],
     ['dark secondary text', darkTheme.textSecondary, darkTheme.surface, 'normal'],

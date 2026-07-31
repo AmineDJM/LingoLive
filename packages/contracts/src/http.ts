@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import {
-  languageCodeSchema,
-  readingLanguageSchema,
-  spokenLanguageSchema,
-} from './languages.js';
+import { languageCodeSchema, readingLanguageSchema, spokenLanguageSchema } from './languages.js';
 import { localeSchema } from './locales.js';
 import {
   accessCodeSchema,
@@ -234,19 +230,21 @@ export const businessSessionPreviewSchema = z.object({
 });
 export type BusinessSessionPreview = z.infer<typeof businessSessionPreviewSchema>;
 
-export const businessJoinRequestSchema = z.object({
-  /** Either a plain 6-digit code… */
-  code: accessCodeSchema.optional(),
-  /** …or a signed deep-link token, which does not expose the code in the URL. */
-  joinToken: z.string().min(10).optional(),
-  targetLanguage: readingLanguageSchema,
-  /** Set for guests; the server issues an ephemeral participant identity. */
-  anonymousId: z.string().min(16).max(128).optional(),
-  displayName: z.string().trim().max(60).optional(),
-}).refine((v) => Boolean(v.code || v.joinToken), {
-  message: 'Provide either a code or a joinToken',
-  path: ['code'],
-});
+export const businessJoinRequestSchema = z
+  .object({
+    /** Either a plain 6-digit code… */
+    code: accessCodeSchema.optional(),
+    /** …or a signed deep-link token, which does not expose the code in the URL. */
+    joinToken: z.string().min(10).optional(),
+    targetLanguage: readingLanguageSchema,
+    /** Set for guests; the server issues an ephemeral participant identity. */
+    anonymousId: z.string().min(16).max(128).optional(),
+    displayName: z.string().trim().max(60).optional(),
+  })
+  .refine((v) => Boolean(v.code || v.joinToken), {
+    message: 'Provide either a code or a joinToken',
+    path: ['code'],
+  });
 export type BusinessJoinRequest = z.infer<typeof businessJoinRequestSchema>;
 
 export const businessJoinResponseSchema = z.object({

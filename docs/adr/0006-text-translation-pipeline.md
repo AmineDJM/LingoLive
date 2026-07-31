@@ -14,7 +14,7 @@ V1 translates **text**, from the canonical transcript.
 
 - The transcription is the source of truth and is never overwritten by a
   translation. Translations are additive, keyed by `(segmentId, targetLanguage)`.
-- Provisional translations are produced only for *stabilised* partials
+- Provisional translations are produced only for _stabilised_ partials
   (`shouldTranslateProvisional`), never per character, and are replaced when
   the final segment arrives.
 - Every translation is cached on

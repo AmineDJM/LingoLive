@@ -69,7 +69,10 @@ describe('ApiClient', () => {
   });
 
   it('falls back to a status-derived code when the body is not our envelope', async () => {
-    const fetchFn = vi.fn(async (_url: string, _init?: RequestInit) => new Response('<html>502</html>', { status: 502 }));
+    const fetchFn = vi.fn(
+      async (_url: string, _init?: RequestInit) =>
+        new Response('<html>502</html>', { status: 502 }),
+    );
     const client = new ApiClient({ baseUrl: 'https://api.test', fetchFn: fetchFn as never });
     await expect(client.me()).rejects.toMatchObject({ code: 'INTERNAL_ERROR' });
   });
@@ -105,7 +108,9 @@ describe('ApiClient', () => {
   });
 
   it('handles a 204 with no body', async () => {
-    const fetchFn = vi.fn(async (_url: string, _init?: RequestInit) => new Response(null, { status: 204 }));
+    const fetchFn = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response(null, { status: 204 }),
+    );
     const client = new ApiClient({ baseUrl: 'https://api.test', fetchFn: fetchFn as never });
     await expect(client.deleteSession('ses_1')).resolves.toBeUndefined();
   });
@@ -118,7 +123,9 @@ describe('ApiClient', () => {
   });
 
   it('builds segment queries for reconnection', async () => {
-    const fetchFn = vi.fn(async (_url: string, _init?: RequestInit) => jsonResponse({ segments: [], lastSequence: 0, hasMore: false }));
+    const fetchFn = vi.fn(async (_url: string, _init?: RequestInit) =>
+      jsonResponse({ segments: [], lastSequence: 0, hasMore: false }),
+    );
     const client = new ApiClient({ baseUrl: 'https://api.test', fetchFn: fetchFn as never });
     await client.getSegments('ses_1', { afterSequence: 12, language: 'ar' });
     expect(fetchFn.mock.calls[0]![0]).toBe(

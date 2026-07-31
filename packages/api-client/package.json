@@ -15,7 +15,9 @@
       "default": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -25,7 +27,10 @@
     "test:watch": "vitest",
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
-  "dependencies": { "@lingolive/contracts": "workspace:*", "zod": "4.4.3" },
+  "dependencies": {
+    "@lingolive/contracts": "workspace:*",
+    "zod": "4.4.3"
+  },
   "devDependencies": {
     "@lingolive/typescript-config": "workspace:*",
     "tsup": "8.5.1",

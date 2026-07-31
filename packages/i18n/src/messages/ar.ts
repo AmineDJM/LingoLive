@@ -267,13 +267,11 @@ export const ar: Messages = {
     featureListenTitle: 'نص مباشر لما يدور حولك',
     featureListenBody: 'ضع هاتفك واقرأ. المؤتمرات والمحاضرات والاجتماعات والأحاديث الصاخبة.',
     featureDiscussTitle: 'جهاز واحد، حتى أربع لغات',
-    featureDiscussBody:
-      'ضع الهاتف أو الجهاز اللوحي على الطاولة. كل شخص يقرأ بلغته، من جهته.',
+    featureDiscussBody: 'ضع الهاتف أو الجهاز اللوحي على الطاولة. كل شخص يقرأ بلغته، من جهته.',
     featureJoinTitle: 'انضم إلى جلسة خلال ثوانٍ',
     featureJoinBody: 'امسح رمزًا، اختر لغة، واقرأ. دون حساب ودون تنزيل.',
     featureAccessibilityTitle: 'مصمّم لإمكانية الوصول',
-    featureAccessibilityBody:
-      'نص كبير جدًا، تباين عالٍ، دعم قارئات الشاشة، وشاشة تبقى مضاءة.',
+    featureAccessibilityBody: 'نص كبير جدًا، تباين عالٍ، دعم قارئات الشاشة، وشاشة تبقى مضاءة.',
     privacyTitle: 'خصوصية افتراضية',
     privacyBody: 'لا يتم تخزين الصوت. تُحفظ النصوص فقط عندما تطلب ذلك صراحةً.',
     ctaTitle: 'جرّب LingoLive الآن',

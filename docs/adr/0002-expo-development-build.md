@@ -15,15 +15,15 @@ distributed through EAS Build. Expo Go is not a supported development target.
 
 Modules chosen, all from the officially maintained Expo set:
 
-| Need | Module |
-|------|--------|
-| Audio capture | `expo-audio` (the supported successor to `expo-av`) |
-| QR scanning | `expo-camera` (`expo-barcode-scanner` is deprecated) |
-| Anonymous identity | `expo-secure-store` (Keychain / Keystore) |
-| Haptics | `expo-haptics` |
-| Deep links | `expo-linking` + Expo Router |
-| Screen awake during a session | `expo-keep-awake` |
-| Device locale | `expo-localization` |
+| Need                          | Module                                               |
+| ----------------------------- | ---------------------------------------------------- |
+| Audio capture                 | `expo-audio` (the supported successor to `expo-av`)  |
+| QR scanning                   | `expo-camera` (`expo-barcode-scanner` is deprecated) |
+| Anonymous identity            | `expo-secure-store` (Keychain / Keystore)            |
+| Haptics                       | `expo-haptics`                                       |
+| Deep links                    | `expo-linking` + Expo Router                         |
+| Screen awake during a session | `expo-keep-awake`                                    |
+| Device locale                 | `expo-localization`                                  |
 
 ## Alternatives considered
 

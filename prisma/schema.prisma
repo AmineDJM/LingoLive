@@ -1,0 +1,512 @@
+// LingoLive data model.
+//
+// Two rules shape this schema:
+//   1. Audio is never a column, a blob or a reference. It does not exist here.
+//   2. Anything a user actually said is stored encrypted (AES-256-GCM,
+//      application-layer, versioned key) — never as readable text.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+enum Plan {
+  GUEST
+  FREE
+  PRO
+  BUSINESS_PARTICIPANT
+}
+
+enum EntitlementSource {
+  DEFAULT
+  STRIPE
+  REVENUECAT
+  MANUAL
+  PROMO
+}
+
+enum Theme {
+  system
+  light
+  dark
+}
+
+model User {
+  id String @id @default(cuid())
+
+  /// Subject from the external identity provider. Null for guests.
+  externalAuthId String? @unique
+  email          String? @unique
+  displayName    String?
+
+  /// A guest has no credentials — only a device-bound anonymous identifier.
+  isGuest Boolean @default(true)
+  isAdmin Boolean @default(false)
+
+  preferredLocale          String  @default("en")
+  preferredReadingLanguage String  @default("en")
+  theme                    Theme   @default(system)
+  transcriptFontScale      Float   @default(1)
+  hapticsEnabled           Boolean @default(true)
+  /// Off by default: nothing is kept unless the user asks for it.
+  autoSaveTranscripts      Boolean @default(false)
+  onboardingCompleted      Boolean @default(false)
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  lastSeenAt DateTime?
+
+  /// Set when the user asks for deletion; the purge job acts on it.
+  deletionRequestedAt DateTime?
+  /// Set once the irreversible purge has run.
+  deletedAt   DateTime?
+  suspendedAt DateTime?
+
+  devices          Device[]
+  sessions         Session[]
+  participants     Participant[]
+  entitlements     Entitlement[]
+  usageEntries     UsageLedger[]
+  auditEntriesMade AdminAuditLog[] @relation("AdminActor")
+  analyticsEvents  AnalyticsEvent[]
+  deletionRequests DeletionRequest[]
+
+  @@index([email])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model Device {
+  id String @id @default(cuid())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// 128-bit random value generated on-device. NEVER an advertising identifier.
+  /// Stored hashed so a database leak does not expose device identities.
+  anonymousIdHash String @unique
+
+  platform   String
+  appVersion String?
+  locale     String?
+
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([lastSeenAt])
+  @@map("devices")
+}
+
+model Entitlement {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan      Plan
+  source    EntitlementSource @default(DEFAULT)
+  active    Boolean           @default(true)
+  expiresAt DateTime?
+
+  /// Provider-side subscription reference, for reconciliation.
+  externalReference String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, active])
+  @@map("entitlements")
+}
+
+// ---------------------------------------------------------------------------
+// Sessions
+// ---------------------------------------------------------------------------
+
+enum SessionKind {
+  PERSONAL_LISTEN
+  PERSONAL_DISCUSS
+  BUSINESS_BROADCAST
+}
+
+enum SessionStatus {
+  PENDING
+  LIVE
+  PAUSED
+  ENDED
+  EXPIRED
+}
+
+enum ParticipantRole {
+  OWNER
+  SPEAKER_SLOT
+  VIEWER
+}
+
+model Session {
+  id   String      @id @default(cuid())
+  kind SessionKind
+
+  ownerUserId String?
+  owner       User?   @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  /// Hashed anonymous owner, so a guest session survives without an account.
+  anonymousOwnerHash String?
+
+  title         String?
+  organizerName String?
+  status        SessionStatus @default(PENDING)
+
+  /// Reading language for LISTEN / BROADCAST. Discussion uses per-slot values.
+  readingLanguage String  @default("original")
+  sourceLanguage  String? @default("auto")
+
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  expiresAt DateTime?
+
+  /// True only after an explicit user action. Unsaved sessions are purged.
+  saveRequested Boolean @default(false)
+  /// Structurally always false. Present so it can be asserted and displayed.
+  audioStored   Boolean @default(false)
+
+  durationSeconds Int @default(0)
+  lastSequence    Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  slots        SpeakerSlot[]
+  participants Participant[]
+  segments     TranscriptSegment[]
+  usageEntries UsageLedger[]
+  accessCodes  BusinessAccessCode[]
+
+  @@index([ownerUserId, startedAt])
+  @@index([anonymousOwnerHash, startedAt])
+  @@index([status, kind])
+  @@index([expiresAt])
+  @@index([saveRequested, endedAt])
+  @@map("sessions")
+}
+
+model SpeakerSlot {
+  id String @id @default(cuid())
+
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  /// 0-based index around the table.
+  position           Int
+  displayName        String?
+  readingLanguage    String
+  spokenLanguageHint String? @default("auto")
+  /// 0 | 90 | 180 | 270 — where this person is sitting.
+  rotation           Int     @default(0)
+
+  createdAt DateTime @default(now())
+
+  segments TranscriptSegment[]
+
+  @@unique([sessionId, position])
+  @@index([sessionId])
+  @@map("speaker_slots")
+}
+
+model Participant {
+  id String @id @default(cuid())
+
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// Ephemeral identity for a guest viewer. Hashed.
+  anonymousHash String?
+
+  role            ParticipantRole
+  displayName     String?
+  targetLanguage  String?
+  joinedAt        DateTime        @default(now())
+  leftAt          DateTime?
+  /// Drives gap-free replay after a reconnection.
+  lastSequenceReceived Int        @default(0)
+
+  @@index([sessionId, leftAt])
+  @@index([userId])
+  @@map("participants")
+}
+
+// ---------------------------------------------------------------------------
+// Transcript
+// ---------------------------------------------------------------------------
+
+model TranscriptSegment {
+  id String @id @default(cuid())
+
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  speakerSlotId String?
+  speakerSlot   SpeakerSlot? @relation(fields: [speakerSlotId], references: [id], onDelete: SetNull)
+
+  /// Monotonic per session. Unique so a duplicate delivery cannot be inserted.
+  sequence Int
+
+  sourceLanguage String?
+
+  /// AES-256-GCM ciphertext. Never plaintext, in any environment.
+  originalTextEncrypted String
+  encryptionVersion     Int    @default(1)
+  /// Plaintext length, kept for admin metadata and cost attribution without
+  /// having to decrypt anything.
+  characterCount        Int    @default(0)
+
+  startedAtMs Int?
+  endedAtMs   Int?
+
+  /// Idempotency guard: a reconnect mid-flush cannot create a second row.
+  clientSegmentId String?
+
+  createdAt DateTime @default(now())
+
+  translations Translation[]
+
+  @@unique([sessionId, sequence])
+  @@unique([sessionId, clientSegmentId])
+  @@index([sessionId, createdAt])
+  @@map("transcript_segments")
+}
+
+model Translation {
+  id String @id @default(cuid())
+
+  segmentId String
+  segment   TranscriptSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+
+  targetLanguage String
+
+  translatedTextEncrypted String
+  encryptionVersion       Int    @default(1)
+  characterCount          Int    @default(0)
+
+  model     String
+  provider  String   @default("mock")
+  createdAt DateTime @default(now())
+
+  /// One translation per (segment, language). This constraint IS the
+  /// deduplication guarantee — see ADR 0008.
+  @@unique([segmentId, targetLanguage])
+  @@index([targetLanguage])
+  @@map("translations")
+}
+
+// ---------------------------------------------------------------------------
+// LingoBusiness access
+// ---------------------------------------------------------------------------
+
+model BusinessAccessCode {
+  id String @id @default(cuid())
+
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  /// HMAC of the 6-digit code. The code itself is shown once, at creation.
+  codeHash String @unique
+
+  active          Boolean   @default(true)
+  expiresAt       DateTime
+  maxParticipants Int?
+  usedCount       Int       @default(0)
+  revokedAt       DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([active, expiresAt])
+  @@map("business_access_codes")
+}
+
+// ---------------------------------------------------------------------------
+// Usage, cost and quotas
+// ---------------------------------------------------------------------------
+
+enum UsageMetric {
+  AUDIO_SECONDS
+  TRANSLATION_CHARACTERS
+  TRANSLATION_REQUESTS
+  INPUT_TOKENS
+  OUTPUT_TOKENS
+  SESSION_STARTED
+  BUSINESS_VIEWER_MINUTES
+}
+
+model UsageLedger {
+  id String @id @default(cuid())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// Guests are metered too, by hashed anonymous identity.
+  anonymousHash String?
+
+  sessionId String?
+  session   Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  metric   UsageMetric
+  quantity Float
+  provider String      @default("mock")
+  model    String?
+
+  /// Server-side cost estimate in USD. Never trusted from a client.
+  estimatedCostUsd Float @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([anonymousHash, createdAt])
+  @@index([sessionId])
+  @@index([metric, createdAt])
+  @@index([createdAt])
+  @@map("usage_ledger")
+}
+
+// ---------------------------------------------------------------------------
+// Operations
+// ---------------------------------------------------------------------------
+
+enum AdminAuditAction {
+  USER_UPDATED
+  USER_SUSPENDED
+  USER_UNSUSPENDED
+  USER_DELETED
+  PLAN_CHANGED
+  SESSION_ENDED
+  SESSION_DELETED
+  TRANSCRIPT_REVEALED
+  CONFIG_OVERRIDDEN
+  ACCESS_CODE_REVOKED
+  BUSINESS_SESSION_CREATED
+  CIRCUIT_BREAKER_TOGGLED
+  DATA_EXPORTED
+}
+
+/// Append-only. There is deliberately no delete path in the admin API.
+model AdminAuditLog {
+  id String @id @default(cuid())
+
+  actorUserId String
+  actor       User   @relation("AdminActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  actorEmail  String?
+
+  action     AdminAuditAction
+  targetType String
+  targetId   String
+  /// Required for any action that reveals user content.
+  reason     String?
+  metadata   Json?
+  requestId  String
+
+  createdAt DateTime @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetId])
+  @@map("admin_audit_log")
+}
+
+/// Runtime overrides for a subset of configuration, editable by an operator
+/// without a redeploy. Secrets are never stored here.
+model ConfigOverride {
+  key       String   @id
+  value     String
+  updatedBy String
+  reason    String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@map("config_overrides")
+}
+
+/// Content-free by construction: the schema has no free-text property field,
+/// so spoken content cannot reach analytics.
+model AnalyticsEvent {
+  id String @id @default(cuid())
+
+  name String
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  anonymousHash String?
+
+  platform            String?
+  locale              String?
+  sessionKind         String?
+  participantCount    Int?
+  targetLanguageCount Int?
+  durationSeconds     Int?
+  plan                String?
+  success             Boolean?
+  errorCode           String?
+
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([createdAt])
+  @@map("analytics_events")
+}
+
+enum DeletionStatus {
+  REQUESTED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+model DeletionRequest {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status      DeletionStatus @default(REQUESTED)
+  requestedAt DateTime       @default(now())
+  scheduledFor DateTime
+  completedAt DateTime?
+  error       String?
+
+  deletedSessions     Int @default(0)
+  deletedSegments     Int @default(0)
+  deletedTranslations Int @default(0)
+
+  @@index([status, scheduledFor])
+  @@index([userId])
+  @@map("deletion_requests")
+}
+
+/// Cheap durable record of a technical error, so the operator console can show
+/// recent failures without a third-party service being configured.
+model ErrorEvent {
+  id String @id @default(cuid())
+
+  requestId String
+  code      String
+  route     String?
+  method    String?
+  status    Int
+  /// Developer-facing message only. Never transcript content.
+  message   String
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([code, createdAt])
+  @@map("error_events")
+}

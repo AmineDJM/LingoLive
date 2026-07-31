@@ -11,12 +11,10 @@ import { z } from 'zod';
  *  - nothing in here is ever logged verbatim — see `redactedConfig()`.
  */
 
-const booleanFromEnv = z
-  .union([z.boolean(), z.string()])
-  .transform((value) => {
-    if (typeof value === 'boolean') return value;
-    return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
-  });
+const booleanFromEnv = z.union([z.boolean(), z.string()]).transform((value) => {
+  if (typeof value === 'boolean') return value;
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+});
 
 const intFromEnv = (fallback: number, min = 0, max = Number.MAX_SAFE_INTEGER) =>
   z
@@ -62,7 +60,10 @@ export const serverEnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     APP_ENV: z.enum(APP_ENVS).default('development'),
-    LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
+    // `silent` is a real pino level and is what the test harness uses.
+    LOG_LEVEL: z
+      .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent'])
+      .default('info'),
     PORT: intFromEnv(4000, 1, 65_535),
     HOST: z.string().default('0.0.0.0'),
 
@@ -251,7 +252,8 @@ export const serverEnvSchema = z
       ctx.addIssue({
         code: 'custom',
         path: ['REVENUECAT_IOS_API_KEY'],
-        message: 'At least one RevenueCat platform key is required when BILLING_PROVIDER=revenuecat',
+        message:
+          'At least one RevenueCat platform key is required when BILLING_PROVIDER=revenuecat',
       });
     }
   });
@@ -342,8 +344,7 @@ export function deriveConfig(env: ServerEnv): DerivedConfig {
     isDevelopment: env.APP_ENV === 'development',
     isTest: env.APP_ENV === 'test' || env.NODE_ENV === 'test',
     translationAvailable:
-      env.AI_PROVIDER === 'mock' ||
-      Boolean(env.OPENAI_API_KEY && env.OPENAI_TRANSLATION_MODEL),
+      env.AI_PROVIDER === 'mock' || Boolean(env.OPENAI_API_KEY && env.OPENAI_TRANSLATION_MODEL),
     transcriptionAvailable: env.AI_PROVIDER === 'mock' || Boolean(env.OPENAI_API_KEY),
     redisEnabled: Boolean(env.REDIS_URL),
     // Belt and braces: the schema already forbids this in prod-like envs.

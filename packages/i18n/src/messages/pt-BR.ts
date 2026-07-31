@@ -45,8 +45,7 @@ export const ptBR: Messages = {
     step2Body: 'Você pode mudar quando quiser, e por pessoa em uma conversa.',
     step2Other: 'Outro idioma',
     step3Title: 'Seu microfone, seu controle',
-    step3Body:
-      'O microfone só é usado durante uma sessão ativa. O áudio não é salvo por padrão.',
+    step3Body: 'O microfone só é usado durante uma sessão ativa. O áudio não é salvo por padrão.',
     step3Consent:
       'Garanta a autorização das pessoas presentes quando a lei ou o contexto exigirem.',
     allowMicrophone: 'Permitir o microfone',
@@ -223,8 +222,7 @@ export const ptBR: Messages = {
     unsupportedBrowser: 'Este navegador não consegue capturar áudio. Tente Chrome, Edge ou Safari.',
     insecureContext: 'O acesso ao microfone exige uma conexão segura (HTTPS).',
     serverUnavailable: 'O LingoLive está temporariamente indisponível.',
-    translationUnavailable:
-      'A tradução está indisponível no momento. Exibindo o texto original.',
+    translationUnavailable: 'A tradução está indisponível no momento. Exibindo o texto original.',
     referenceId: 'Referência: {requestId}',
   },
 
@@ -273,8 +271,7 @@ export const ptBR: Messages = {
     featureAccessibilityBody:
       'Texto muito grande, alto contraste, leitores de tela e tela sempre ligada.',
     privacyTitle: 'Privado por padrão',
-    privacyBody:
-      'O áudio não é armazenado. As transcrições só são mantidas quando você salva.',
+    privacyBody: 'O áudio não é armazenado. As transcrições só são mantidas quando você salva.',
     ctaTitle: 'Experimente o LingoLive agora',
     ctaBody: 'Funciona no seu navegador. Nenhuma instalação necessária.',
     installPwa: 'Instalar o aplicativo',

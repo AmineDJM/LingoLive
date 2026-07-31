@@ -21,7 +21,7 @@ One Next.js 16 App Router application serving both, with a hard separation:
 
 React Native Web was rejected: sharing components across mobile and web would
 have compromised both the SEO bundle size and the ability to use platform-idiomatic
-patterns. What *is* shared is everything that matters for correctness —
+patterns. What _is_ shared is everything that matters for correctness —
 contracts, realtime logic, i18n, design tokens.
 
 ## Alternatives considered

@@ -14,7 +14,7 @@ economically fatal at conference scale.
 Per source utterance, exactly:
 
 1. **one** transcription, of the single source audio stream;
-2. **one** translation per *distinct* target language currently subscribed
+2. **one** translation per _distinct_ target language currently subscribed
    (`dedupeTargetLanguages`);
 3. fan-out of the same result to every viewer reading that language.
 

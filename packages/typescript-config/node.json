@@ -3,16 +3,10 @@
   "display": "LingoLive Node Service",
   "extends": "./base.json",
   "compilerOptions": {
-    "lib": [
-      "ES2023"
-    ],
-    "types": [
-      "node"
-    ],
+    "lib": ["ES2023"],
+    "types": ["node"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext"
   },
-  "include": [
-    "src/**/*.ts"
-  ]
+  "include": ["src/**/*.ts"]
 }

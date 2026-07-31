@@ -37,7 +37,10 @@ describe('scrubForLog — transcripts can never reach a log sink', () => {
   });
 
   it('masks e-mail addresses', () => {
-    const scrubbed = scrubForLog({ email: 'amine.djouamaii@example.com' }) as Record<string, unknown>;
+    const scrubbed = scrubForLog({ email: 'amine.djouamaii@example.com' }) as Record<
+      string,
+      unknown
+    >;
     expect(scrubbed.email).toBe('a***i@example.com');
   });
 

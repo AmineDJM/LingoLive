@@ -5,7 +5,7 @@
 ## Context
 
 At implementation time the newest published majors were Prisma 7.x and
-TypeScript 7.x. The brief asks for current stable versions *and* for maximum
+TypeScript 7.x. The brief asks for current stable versions _and_ for maximum
 stability, compatibility and simplicity of deployment. Where those pull apart,
 the divergence must be documented.
 

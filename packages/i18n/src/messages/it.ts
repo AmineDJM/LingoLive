@@ -151,8 +151,7 @@ export const it: Messages = {
     deleteConfirmBody: 'L’operazione non può essere annullata.',
     renameTitle: 'Rinomina',
     itemSubtitle: '{duration} · {languages}',
-    localOnlyWarning:
-      'Salvato solo su questo dispositivo. Andrà perso se disinstalli l’app.',
+    localOnlyWarning: 'Salvato solo su questo dispositivo. Andrà perso se disinstalli l’app.',
     kindListen: 'Ascolto',
     kindDiscuss: 'Conversazione',
     kindBusiness: 'Sessione',
@@ -174,7 +173,8 @@ export const it: Messages = {
     transcriptSize: 'Dimensione della trascrizione',
     haptics: 'Feedback aptico',
     autoSave: 'Salva automaticamente le trascrizioni',
-    autoSaveHint: 'Disattivato per impostazione predefinita. Nulla viene conservato senza il tuo consenso.',
+    autoSaveHint:
+      'Disattivato per impostazione predefinita. Nulla viene conservato senza il tuo consenso.',
     account: 'Account',
     signIn: 'Accedi',
     signOut: 'Esci',
@@ -236,7 +236,8 @@ export const it: Messages = {
     speakButton: 'Tieni premuto per parlare in {language}',
     rotateButton: 'Ruota il riquadro {language}',
     languageButton: 'Lingua di lettura: {language}. Tocca per cambiare.',
-    listenCard: 'Ascolta. Una conferenza, una riunione, una lezione o una conversazione intorno a te.',
+    listenCard:
+      'Ascolta. Una conferenza, una riunione, una lezione o una conversazione intorno a te.',
     discussCard: 'Parla. Parla con due, tre o quattro persone.',
     joinCard: 'Entra. Scansiona o inserisci un codice.',
     backToLiveButton: 'Torna alla trascrizione in diretta',
@@ -268,13 +269,13 @@ export const it: Messages = {
     featureDiscussBody:
       'Metti il telefono o il tablet sul tavolo. Ognuno legge nella propria lingua, dal proprio lato.',
     featureJoinTitle: 'Entra in una sessione in pochi secondi',
-    featureJoinBody: 'Scansiona un codice, scegli una lingua, leggi. Senza account, senza download.',
+    featureJoinBody:
+      'Scansiona un codice, scegli una lingua, leggi. Senza account, senza download.',
     featureAccessibilityTitle: 'Pensato per l’accessibilità',
     featureAccessibilityBody:
       'Testo molto grande, contrasto elevato, screen reader e schermo sempre acceso.',
     privacyTitle: 'Privato per impostazione predefinita',
-    privacyBody:
-      'L’audio non viene conservato. Le trascrizioni restano solo se le salvi tu.',
+    privacyBody: 'L’audio non viene conservato. Le trascrizioni restano solo se le salvi tu.',
     ctaTitle: 'Prova LingoLive ora',
     ctaBody: 'Funziona nel tuo browser. Nessuna installazione necessaria.',
     installPwa: 'Installa l’app',

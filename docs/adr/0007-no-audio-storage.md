@@ -24,7 +24,7 @@ Enforced structurally rather than by policy:
   before anything reaches a log sink; unit tests assert this.
 - No object storage is provisioned in `infra/render.yaml`.
 
-Transcript *text* is different: kept only when the user explicitly saves it,
+Transcript _text_ is different: kept only when the user explicitly saves it,
 encrypted at rest with AES-256-GCM, deletable at any time.
 
 ## Consequences

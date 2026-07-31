@@ -1,0 +1,9 @@
+{
+  "extends": "@lingolive/typescript-config/node.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  },
+  "include": ["src/**/*.ts"]
+}

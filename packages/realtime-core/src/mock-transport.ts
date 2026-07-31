@@ -260,7 +260,10 @@ export class MockTranscriptionTransport implements RealtimeTranscriptionTranspor
       return;
     }
 
-    this.timer = this.setTimeoutFn(() => this.scheduleNextDelta(), this.options.sentenceGapMs ?? 400);
+    this.timer = this.setTimeoutFn(
+      () => this.scheduleNextDelta(),
+      this.options.sentenceGapMs ?? 400,
+    );
   }
 
   /** A stop mid-sentence still yields the words already spoken. */

@@ -184,7 +184,12 @@ export interface CreateLoggerOptions {
 }
 
 export function createLogger(options: CreateLoggerOptions = {}): Logger {
-  const { level = 'info', name = 'lingolive', environment = 'development', pretty = false } = options;
+  const {
+    level = 'info',
+    name = 'lingolive',
+    environment = 'development',
+    pretty = false,
+  } = options;
 
   const pinoOptions: LoggerOptions = {
     level,

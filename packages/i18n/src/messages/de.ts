@@ -220,7 +220,8 @@ export const de: Messages = {
     sessionFull: 'Diese Sitzung ist voll.',
     quotaExceeded: 'Du hast dein Limit für diesen Monat erreicht.',
     sessionTooLong: 'Diese Sitzung hat ihre Höchstdauer erreicht.',
-    unsupportedBrowser: 'Dieser Browser kann kein Audio aufnehmen. Probiere Chrome, Edge oder Safari.',
+    unsupportedBrowser:
+      'Dieser Browser kann kein Audio aufnehmen. Probiere Chrome, Edge oder Safari.',
     insecureContext: 'Mikrofonzugriff erfordert eine sichere Verbindung (HTTPS).',
     serverUnavailable: 'LingoLive ist vorübergehend nicht verfügbar.',
     translationUnavailable:
@@ -236,7 +237,8 @@ export const de: Messages = {
     speakButton: 'Gedrückt halten, um auf {language} zu sprechen',
     rotateButton: 'Kachel {language} drehen',
     languageButton: 'Lesesprache: {language}. Zum Ändern tippen.',
-    listenCard: 'Zuhören. Ein Vortrag, ein Meeting, eine Vorlesung oder ein Gespräch um dich herum.',
+    listenCard:
+      'Zuhören. Ein Vortrag, ein Meeting, eine Vorlesung oder ein Gespräch um dich herum.',
     discussCard: 'Sprechen. Sprich mit zwei, drei oder vier Personen.',
     joinCard: 'Beitreten. Code scannen oder eingeben.',
     backToLiveButton: 'Zurück zum Live-Transkript',

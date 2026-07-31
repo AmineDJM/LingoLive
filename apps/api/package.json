@@ -1,0 +1,58 @@
+{
+  "name": "@lingolive/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@fastify/cors": "11.3.0",
+    "@fastify/helmet": "13.1.0",
+    "@fastify/rate-limit": "11.2.0",
+    "@fastify/websocket": "11.3.0",
+    "@lingolive/config": "workspace:*",
+    "@lingolive/contracts": "workspace:*",
+    "@lingolive/logging": "workspace:*",
+    "@lingolive/realtime-core": "workspace:*",
+    "@prisma/client": "6.19.3",
+    "fastify": "5.11.0",
+    "ioredis": "6.0.0",
+    "openai": "7.3.0",
+    "ws": "8.21.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@lingolive/testing": "workspace:*",
+    "@lingolive/typescript-config": "workspace:*",
+    "@types/node": "22.20.0",
+    "@types/ws": "8.18.1",
+    "pino-pretty": "13.1.3",
+    "prisma": "6.19.3",
+    "tsx": "4.23.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  },
+  "exports": {
+    "./context": {
+      "types": "./src/context.ts",
+      "default": "./dist/context.js"
+    },
+    "./jobs": {
+      "types": "./src/modules/jobs.ts",
+      "default": "./dist/modules/jobs.js"
+    },
+    "./app": {
+      "types": "./src/app.ts",
+      "default": "./dist/app.js"
+    }
+  }
+}

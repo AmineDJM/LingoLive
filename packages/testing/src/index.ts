@@ -1,8 +1,4 @@
-import type {
-  RenderedSegment,
-  TranscriptSegment,
-  Translation,
-} from '@lingolive/contracts';
+import type { RenderedSegment, TranscriptSegment, Translation } from '@lingolive/contracts';
 
 /**
  * @lingolive/testing — deterministic fixtures shared by unit, integration and

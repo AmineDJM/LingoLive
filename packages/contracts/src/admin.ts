@@ -324,9 +324,7 @@ export const adminUsageResponseSchema = z.object({
       estimatedCostUsd: z.number().min(0),
     }),
   ),
-  byLanguage: z.array(
-    z.object({ language: z.string(), translations: z.number().int().min(0) }),
-  ),
+  byLanguage: z.array(z.object({ language: z.string(), translations: z.number().int().min(0) })),
   limits: z.object({
     dailyLimitUsd: z.number().min(0),
     monthlyLimitUsd: z.number().min(0),

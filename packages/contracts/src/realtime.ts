@@ -153,7 +153,14 @@ export const serverEventSchema = z.discriminatedUnion('type', [
     type: z.literal('session.ended'),
     sessionId: z.string(),
     durationSeconds: z.number().int().min(0),
-    reason: z.enum(['USER_ENDED', 'IDLE_TIMEOUT', 'MAX_DURATION', 'QUOTA', 'ORGANIZER_ENDED', 'SERVER_SHUTDOWN']),
+    reason: z.enum([
+      'USER_ENDED',
+      'IDLE_TIMEOUT',
+      'MAX_DURATION',
+      'QUOTA',
+      'ORGANIZER_ENDED',
+      'SERVER_SHUTDOWN',
+    ]),
   }),
   z.object({ type: z.literal('pong'), serverTimeMs: z.number().int() }),
   z.object({

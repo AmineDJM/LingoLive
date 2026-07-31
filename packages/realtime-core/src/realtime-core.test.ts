@@ -221,7 +221,12 @@ describe('TranscriptStore', () => {
     const store = new TranscriptStore();
     store.applyPartial({ slotId: 'tile-0', text: 'bonjour', sourceLanguage: 'fr', sequence: 1 });
     store.applyPartial({ slotId: 'tile-1', text: 'hello', sourceLanguage: 'en', sequence: 2 });
-    store.applyPartial({ slotId: 'tile-0', text: 'bonjour à tous', sourceLanguage: 'fr', sequence: 1 });
+    store.applyPartial({
+      slotId: 'tile-0',
+      text: 'bonjour à tous',
+      sourceLanguage: 'fr',
+      sequence: 1,
+    });
     const partials = store.render('original').filter((l) => !l.isFinal);
     expect(partials).toHaveLength(2);
     expect(partials.find((p) => p.slotId === 'tile-0')!.text).toBe('bonjour à tous');

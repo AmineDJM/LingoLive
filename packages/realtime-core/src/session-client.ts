@@ -43,12 +43,7 @@ export interface SessionClientOptions {
 }
 
 export type SessionClientStatus =
-  | 'idle'
-  | 'connecting'
-  | 'connected'
-  | 'reconnecting'
-  | 'closed'
-  | 'failed';
+  'idle' | 'connecting' | 'connected' | 'reconnecting' | 'closed' | 'failed';
 
 /**
  * Talks to the LingoLive realtime hub.

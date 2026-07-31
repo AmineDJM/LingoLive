@@ -19,11 +19,11 @@ Both platforms program against one interface,
 `RealtimeTranscriptionTransport` (`packages/contracts/src/realtime.ts`), with
 three implementations:
 
-| Platform | Transport | Why |
-|----------|-----------|-----|
-| Web | WebRTC with an ephemeral client secret | Lowest latency; the browser already has the stack. |
-| Mobile | **Native capture → WSS to the LingoLive API → provider** | No extra native dependency; one audio path to debug; the server owns sequencing, quota and cost accounting. |
-| Tests / `AI_PROVIDER=mock` | In-process mock | Whole product runs with no provider account. |
+| Platform                   | Transport                                                | Why                                                                                                         |
+| -------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Web                        | WebRTC with an ephemeral client secret                   | Lowest latency; the browser already has the stack.                                                          |
+| Mobile                     | **Native capture → WSS to the LingoLive API → provider** | No extra native dependency; one audio path to debug; the server owns sequencing, quota and cost accounting. |
+| Tests / `AI_PROVIDER=mock` | In-process mock                                          | Whole product runs with no provider account.                                                                |
 
 Mobile is a deliberate one-hop-more design. The extra hop costs a few tens of
 milliseconds; it buys a single place where usage is metered, translations are

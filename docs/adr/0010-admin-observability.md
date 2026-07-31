@@ -22,14 +22,14 @@ configuration, feature flags, analytics funnels — all exposed under
 sessions, change plans, suspend accounts, revoke access codes, override
 runtime configuration and trip the cost circuit breaker.
 
-**Transcript *content* is the one gated resource.** Reading the words a user
+**Transcript _content_ is the one gated resource.** Reading the words a user
 spoke requires:
 
 - the `admin:transcripts:reveal` permission, separate from `admin:read`;
 - a written reason of at least 10 characters, supplied per session;
 - an `AdminAuditLog` entry that operators cannot delete or edit.
 
-By default the console shows transcript *metadata* — sequence, language,
+By default the console shows transcript _metadata_ — sequence, language,
 character count, timing, which languages it was translated into — which is
 what almost every real support question actually needs.
 

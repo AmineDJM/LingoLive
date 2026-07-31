@@ -7,11 +7,7 @@ import { languageCodeSchema, readingLanguageSchema, spokenLanguageSchema } from 
  * situation, DISCUSS covers table conversations, BROADCAST covers a
  * LingoBusiness room the user joins as a viewer.
  */
-export const SESSION_KINDS = [
-  'PERSONAL_LISTEN',
-  'PERSONAL_DISCUSS',
-  'BUSINESS_BROADCAST',
-] as const;
+export const SESSION_KINDS = ['PERSONAL_LISTEN', 'PERSONAL_DISCUSS', 'BUSINESS_BROADCAST'] as const;
 export const sessionKindSchema = z.enum(SESSION_KINDS);
 export type SessionKind = z.infer<typeof sessionKindSchema>;
 
@@ -39,11 +35,7 @@ export function rotateClockwise(current: Rotation): Rotation {
 }
 
 /** Number of people sharing one device in DISCUSS mode. */
-export const discussParticipantCountSchema = z.union([
-  z.literal(2),
-  z.literal(3),
-  z.literal(4),
-]);
+export const discussParticipantCountSchema = z.union([z.literal(2), z.literal(3), z.literal(4)]);
 export type DiscussParticipantCount = z.infer<typeof discussParticipantCountSchema>;
 
 /**
@@ -111,11 +103,18 @@ export const sessionSummarySchema = z.object({
 });
 export type SessionSummary = z.infer<typeof sessionSummarySchema>;
 
-/** A 6-digit LingoBusiness room code. Never stored in clear on the server. */
+/**
+ * A 6-digit LingoBusiness room code. Never stored in clear on the server.
+ *
+ * Organizers display codes as `728 416` or `728-416`, and people type what
+ * they see — so separators are accepted and normalised away rather than
+ * rejected.
+ */
 export const accessCodeSchema = z
   .string()
   .trim()
-  .regex(/^[0-9]{6}$/, 'Access code must be exactly 6 digits');
+  .transform((value) => value.replace(/[\s\u00A0-]/g, ''))
+  .pipe(z.string().regex(/^[0-9]{6}$/, 'Access code must be exactly 6 digits'));
 
 export function normalizeAccessCode(input: string): string {
   return input.replace(/\D/g, '').slice(0, 6);

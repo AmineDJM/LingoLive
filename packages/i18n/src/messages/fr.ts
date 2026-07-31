@@ -220,8 +220,7 @@ export const fr: Messages = {
     sessionFull: 'Cette session est complète.',
     quotaExceeded: 'Vous avez atteint votre limite pour ce mois-ci.',
     sessionTooLong: 'Cette session a atteint sa durée maximale.',
-    unsupportedBrowser:
-      'Ce navigateur ne peut pas capter l’audio. Essayez Chrome, Edge ou Safari.',
+    unsupportedBrowser: 'Ce navigateur ne peut pas capter l’audio. Essayez Chrome, Edge ou Safari.',
     insecureContext: 'L’accès au microphone nécessite une connexion sécurisée (HTTPS).',
     serverUnavailable: 'LingoLive est temporairement indisponible.',
     translationUnavailable:

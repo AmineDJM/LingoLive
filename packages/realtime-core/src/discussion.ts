@@ -112,9 +112,7 @@ export function setTileSpokenLanguage(
 ): DiscussionState {
   return {
     ...state,
-    tiles: state.tiles.map((tile) =>
-      tile.id === tileId ? { ...tile, spokenLanguageHint } : tile,
-    ),
+    tiles: state.tiles.map((tile) => (tile.id === tileId ? { ...tile, spokenLanguageHint } : tile)),
   };
 }
 

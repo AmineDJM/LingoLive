@@ -182,7 +182,9 @@ export class TranscriptStore {
         slotId: segment.speakerSlotId ?? null,
         sourceLanguage: segment.sourceLanguage ?? null,
         isFinal: true,
-        text: useOriginal ? segment.originalText : (translation?.translatedText ?? segment.originalText),
+        text: useOriginal
+          ? segment.originalText
+          : (translation?.translatedText ?? segment.originalText),
         isOriginal: useOriginal || !translation,
         isTranslationPending: !useOriginal && !translation,
       });

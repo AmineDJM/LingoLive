@@ -201,9 +201,7 @@ export class ApiClient {
 
   // --- realtime -----------------------------------------------------------
 
-  requestTranscriptionToken(
-    body: TranscriptionTokenRequest,
-  ): Promise<TranscriptionTokenResponse> {
+  requestTranscriptionToken(body: TranscriptionTokenRequest): Promise<TranscriptionTokenResponse> {
     return this.post<TranscriptionTokenResponse>('/realtime/transcription-token', body);
   }
 

@@ -45,8 +45,7 @@ export const en = {
 
   onboarding: {
     step1Title: 'Understand what is being said, live.',
-    step1Body:
-      'LingoLive turns speech into text and can translate it instantly, wherever you are.',
+    step1Body: 'LingoLive turns speech into text and can translate it instantly, wherever you are.',
     step2Title: 'Which language do you want to read in?',
     step2Body: 'You can change this at any time, and per person in a discussion.',
     step2Other: 'Another language',
@@ -272,14 +271,12 @@ export const en = {
     featureDiscussBody:
       'Put the phone or tablet on the table. Each person reads in their own language, from their own side.',
     featureJoinTitle: 'Join a session in seconds',
-    featureJoinBody:
-      'Scan a code, pick a language, read along. No account, no download required.',
+    featureJoinBody: 'Scan a code, pick a language, read along. No account, no download required.',
     featureAccessibilityTitle: 'Built for accessibility',
     featureAccessibilityBody:
       'Very large text, high contrast, screen-reader support, and a screen that stays awake.',
     privacyTitle: 'Private by default',
-    privacyBody:
-      'Audio is not stored. Transcripts are only kept when you explicitly save them.',
+    privacyBody: 'Audio is not stored. Transcripts are only kept when you explicitly save them.',
     ctaTitle: 'Try LingoLive now',
     ctaBody: 'It works in your browser. No installation required.',
     installPwa: 'Install the app',

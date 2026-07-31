@@ -87,10 +87,7 @@ function withState(
   };
 }
 
-export function realtimeReducer(
-  context: RealtimeContext,
-  action: RealtimeAction,
-): RealtimeContext {
+export function realtimeReducer(context: RealtimeContext, action: RealtimeAction): RealtimeContext {
   switch (action.type) {
     case 'PERMISSION_REQUESTED':
       return withState(context, 'requesting_permission');

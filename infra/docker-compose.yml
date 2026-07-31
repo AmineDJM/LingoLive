@@ -1,0 +1,41 @@
+# Local development dependencies for LingoLive.
+# `pnpm infra:up` starts these; `pnpm bootstrap` waits for them to be healthy.
+name: lingolive
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lingolive-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lingolive
+      POSTGRES_PASSWORD: lingolive
+      POSTGRES_DB: lingolive
+      # Faster startup for a throwaway dev database.
+      POSTGRES_INITDB_ARGS: '--auth-host=scram-sha-256'
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lingolive -d lingolive']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: lingolive-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'no', '--save', '']
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  postgres-data:
+    driver: local

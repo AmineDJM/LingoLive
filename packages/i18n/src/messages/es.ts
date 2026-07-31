@@ -151,8 +151,7 @@ export const es: Messages = {
     deleteConfirmBody: 'Esta acción no se puede deshacer.',
     renameTitle: 'Renombrar',
     itemSubtitle: '{duration} · {languages}',
-    localOnlyWarning:
-      'Guardado solo en este dispositivo. Se perderá si desinstalas la aplicación.',
+    localOnlyWarning: 'Guardado solo en este dispositivo. Se perderá si desinstalas la aplicación.',
     kindListen: 'Escucha',
     kindDiscuss: 'Conversación',
     kindBusiness: 'Sesión',

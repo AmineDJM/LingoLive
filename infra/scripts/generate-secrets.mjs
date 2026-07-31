@@ -13,7 +13,10 @@ const secrets = {
   TRANSCRIPT_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
 };
 
-console.log('# Generated %s — store these in your secret manager, never in git.', new Date().toISOString());
+console.log(
+  '# Generated %s — store these in your secret manager, never in git.',
+  new Date().toISOString(),
+);
 for (const [key, value] of Object.entries(secrets)) {
   console.log(`${key}=${value}`);
 }
