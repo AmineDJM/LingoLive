@@ -1,0 +1,30 @@
+# Listen mode: start, read, pause, end, and the explicit save decision.
+appId: ${MAESTRO_APP_ID}
+name: Listen session
+---
+- launchApp
+- tapOn:
+    id: 'home-listen'
+- tapOn:
+    id: 'start-listening'
+
+- assertVisible:
+    id: 'transcript'
+- assertVisible:
+    id: 'session-timer'
+
+- tapOn:
+    id: 'toggle-pause'
+- assertVisible: 'Paused'
+- tapOn:
+    id: 'toggle-pause'
+
+- tapOn:
+    id: 'end-session'
+# Nothing is kept unless the user says so.
+- assertVisible:
+    id: 'save-transcript'
+- assertVisible:
+    id: 'discard-transcript'
+- tapOn:
+    id: 'discard-transcript'

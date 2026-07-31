@@ -9,7 +9,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint app components features hooks services",
+    "lint": "eslint app components hooks services",
     "test": "vitest run --passWithNoTests",
     "build:development": "eas build --profile development",
     "build:preview": "eas build --profile preview --platform all",

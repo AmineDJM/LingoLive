@@ -1,0 +1,37 @@
+# Discuss mode: 2, 3 and 4 people, per-tile rotation and language.
+appId: ${MAESTRO_APP_ID}
+name: Discussion canvas
+---
+- launchApp
+- tapOn:
+    id: 'home-discuss'
+- tapOn:
+    id: 'people-4'
+
+- assertVisible:
+    id: 'discussion-canvas'
+- assertVisible:
+    id: 'tile-0'
+- assertVisible:
+    id: 'tile-1'
+- assertVisible:
+    id: 'tile-2'
+- assertVisible:
+    id: 'tile-3'
+
+# Rotating one tile leaves the others alone.
+- tapOn:
+    id: 'tile-rotate-0'
+- tapOn:
+    id: 'tile-rotate-0'
+
+# Each tile picks its own language, searched without diacritics.
+- tapOn:
+    id: 'tile-language-2'
+- inputText: 'arabic'
+- tapOn:
+    id: 'language-ar'
+- assertVisible: 'العربية'
+
+- tapOn:
+    id: 'end-discussion'

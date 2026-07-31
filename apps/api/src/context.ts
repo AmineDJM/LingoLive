@@ -2,6 +2,12 @@ import { PrismaClient } from '@prisma/client';
 import type { Redis } from 'ioredis';
 import { deriveConfig, type DerivedConfig, type ServerEnv } from '@lingolive/config';
 import type { Logger } from '@lingolive/logging';
+import {
+  createAnalytics,
+  createErrorReporter,
+  type Analytics,
+  type ErrorReporter,
+} from '@lingolive/observability';
 import { createAiProviders, costRatesFor, type AiProviders, type CostRates } from './ai/index.js';
 import { InProcessRealtimeHub, type RealtimeHub } from './realtime/hub.js';
 import { TranscriptCipher } from './security/crypto.js';
@@ -29,6 +35,9 @@ export interface AppContext {
   readonly metrics: MetricsRegistry;
   readonly runtimeConfig: RuntimeConfigStore;
   readonly costRates: CostRates;
+  /** Both are inert unless explicitly configured. See ADR-0011. */
+  readonly analytics: Analytics;
+  readonly errorReporter: ErrorReporter;
   readonly startedAt: Date;
   readonly version: string;
 }
@@ -44,6 +53,9 @@ export interface CreateContextOptions {
   logger: Logger;
   prisma?: PrismaClient;
   redis?: RedisConnections | null;
+  /** Overridable so tests can assert exactly what would leave the process. */
+  analytics?: Analytics;
+  errorReporter?: ErrorReporter;
   version?: string;
 }
 
@@ -89,6 +101,23 @@ export async function createAppContext(options: CreateContextOptions): Promise<A
     metrics: new MetricsRegistry(),
     runtimeConfig: new RuntimeConfigStore(prisma, env, logger),
     costRates: costRatesFor(env),
+    analytics:
+      options.analytics ??
+      createAnalytics({
+        enabled: env.ANALYTICS_ENABLED,
+        apiKey: env.POSTHOG_KEY,
+        host: env.POSTHOG_HOST,
+        onError: (error) => logger.warn({ err: error }, 'Analytics delivery failed'),
+      }),
+    errorReporter:
+      options.errorReporter ??
+      createErrorReporter({
+        dsn: env.SENTRY_DSN,
+        environment: env.SENTRY_ENVIRONMENT ?? env.APP_ENV,
+        release: options.version ?? '1.0.0',
+        sampleRate: env.SENTRY_TRACES_SAMPLE_RATE,
+        onError: (error) => logger.warn({ err: error }, 'Error reporting delivery failed'),
+      }),
     startedAt: new Date(),
     version: options.version ?? '1.0.0',
   };
@@ -129,6 +158,9 @@ async function connectRedis(env: ServerEnv, logger: Logger): Promise<RedisConnec
 }
 
 export async function closeAppContext(context: AppContext): Promise<void> {
+  // Flush before the process exits, or the last error of a crash loop — the
+  // one that matters — is the one that never gets reported.
+  await Promise.allSettled([context.analytics.flush(), context.errorReporter.flush()]);
   await context.hub.close();
   if (context.redis) {
     await Promise.allSettled([

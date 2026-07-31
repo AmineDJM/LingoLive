@@ -47,6 +47,14 @@ export function registerErrorHandler(app: FastifyInstance, context: AppContext):
         status,
         message,
       });
+      // Optional, and structurally unable to carry request content: only the
+      // exception type, a scrubbed message and enum tags leave the process.
+      context.errorReporter.captureException(error, {
+        requestId,
+        route,
+        ...(request.actor ? { role: request.actor.isGuest ? 'guest' : request.actor.plan } : {}),
+        tags: { method: request.method, code },
+      });
     } else {
       request.log.warn(logPayload, 'Request rejected');
     }

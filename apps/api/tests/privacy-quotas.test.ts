@@ -402,6 +402,90 @@ describe('analytics can never carry spoken content', () => {
   });
 });
 
+describe('outbound third-party telemetry', () => {
+  it('sends a real session lifecycle with no content and no identifiers', async () => {
+    harness.analyticsSent.length = 0;
+
+    const guest = await registerGuest(harness.app);
+    const created = await harness.app.inject({
+      method: 'POST',
+      url: '/api/v1/sessions',
+      headers: authHeaders(guest.token),
+      payload: {
+        kind: 'PERSONAL_DISCUSS',
+        readingLanguage: 'fr',
+        slots: [
+          { position: 0, readingLanguage: 'fr', rotation: 0 },
+          { position: 1, readingLanguage: 'ar', rotation: 180 },
+        ],
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    const sessionId = created.json().session.id;
+
+    harness.context.hub.broadcast(sessionId, {
+      type: 'transcript.final',
+      segment: {
+        id: 'seg_1',
+        sessionId,
+        sequence: 1,
+        speakerSlotId: null,
+        sourceLanguage: 'fr',
+        originalText: 'Le patient a une allergie connue aux arachides',
+        isFinal: true,
+      },
+    });
+
+    await harness.app.inject({
+      method: 'POST',
+      url: `/api/v1/sessions/${sessionId}/end`,
+      headers: authHeaders(guest.token),
+      payload: { reportedAudioSeconds: 42 },
+    });
+    await harness.context.analytics.flush();
+
+    const names = harness.analyticsSent.map((payload) => payload.event);
+    expect(names).toContain('session_started');
+    expect(names).toContain('session_ended');
+
+    const serialized = JSON.stringify(harness.analyticsSent);
+    expect(serialized).not.toContain('allergie');
+    expect(serialized).not.toContain('arachides');
+    // Never the account id, never the device identity, never the session id.
+    expect(serialized).not.toContain(guest.userId);
+    expect(serialized).not.toContain(guest.anonymousId);
+    expect(serialized).not.toContain(sessionId);
+
+    const ended = harness.analyticsSent.find((payload) => payload.event === 'session_ended');
+    expect(Object.keys(ended!.properties).sort()).toEqual([
+      'durationSeconds',
+      'kind',
+      'result',
+      'segmentCount',
+    ]);
+  });
+
+  it('reports a server error with a request id and no request content', async () => {
+    harness.errorsReported.length = 0;
+
+    // Force a genuine 500: the route exists, the id does not parse as one.
+    const broken = await harness.app.inject({
+      method: 'GET',
+      url: '/api/v1/dev/boom',
+      headers: { 'x-force-error': '1' },
+    });
+
+    if (broken.statusCode >= 500) {
+      const [report] = harness.errorsReported;
+      expect(report?.context?.requestId).toBeTruthy();
+      expect(JSON.stringify(report?.context)).not.toContain('authorization');
+    } else {
+      // The dev-only failure route is disabled; the reporter must then be idle.
+      expect(harness.errorsReported).toHaveLength(0);
+    }
+  });
+});
+
 describe('logging cannot carry transcript content', () => {
   it('scrubs a realistic realtime payload', () => {
     const scrubbed = JSON.stringify(

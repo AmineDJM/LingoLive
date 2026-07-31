@@ -1,0 +1,30 @@
+# Joining a session: by code, with no account.
+appId: ${MAESTRO_APP_ID}
+name: Join a LingoBusiness session
+env:
+  CODE: ${MAESTRO_JOIN_CODE}
+---
+- launchApp
+- tapOn:
+    id: 'home-join'
+
+- assertVisible:
+    id: 'code-input'
+# The camera rationale is shown before the scanner is ever opened.
+- assertVisible:
+    text: '.*camera is used only to scan.*'
+
+- tapOn:
+    id: 'code-input'
+- inputText: ${CODE}
+- tapOn:
+    id: 'lookup-code'
+
+- assertVisible: 'Which language do you want to follow in?'
+- tapOn:
+    id: 'language-ar'
+- tapOn:
+    id: 'confirm-join'
+
+- assertVisible:
+    id: 'transcript'

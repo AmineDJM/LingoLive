@@ -22,6 +22,7 @@
     "@lingolive/config": "workspace:*",
     "@lingolive/contracts": "workspace:*",
     "@lingolive/logging": "workspace:*",
+    "@lingolive/observability": "workspace:*",
     "@lingolive/realtime-core": "workspace:*",
     "@prisma/client": "6.19.3",
     "fastify": "5.11.0",

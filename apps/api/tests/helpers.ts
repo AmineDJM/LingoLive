@@ -4,6 +4,11 @@ import { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { parseServerEnv } from '@lingolive/config';
 import { createSilentLogger } from '@lingolive/logging';
+import {
+  createAnalytics,
+  type AnalyticsPayload,
+  type ErrorReportContext,
+} from '@lingolive/observability';
 import { buildApp } from '../src/app.js';
 import { createAppContext, type AppContext } from '../src/context.js';
 
@@ -24,6 +29,10 @@ export interface TestHarness {
   app: FastifyInstance;
   context: AppContext;
   prisma: PrismaClient;
+  /** Everything the outbound analytics client would have sent. */
+  analyticsSent: AnalyticsPayload[];
+  /** Everything the outbound error reporter would have sent. */
+  errorsReported: Array<{ error: unknown; context?: ErrorReportContext }>;
   close: () => Promise<void>;
 }
 
@@ -36,11 +45,31 @@ export async function createHarness(overrides: Record<string, string> = {}): Pro
   const { REDIS_URL: _ambientRedis, ...ambient } = process.env;
   const env = parseServerEnv({ ...ambient, ...overrides });
   const prisma = new PrismaClient();
+
+  // Third-party delivery is replaced by a recorder, so a test can assert on
+  // the exact bytes that *would* leave the process rather than trusting that
+  // the vendor client is well behaved.
+  const analyticsSent: AnalyticsPayload[] = [];
+  const errorsReported: Array<{ error: unknown; context?: ErrorReportContext }> = [];
+  const analytics = createAnalytics({
+    enabled: true,
+    apiKey: 'phc_test',
+    batchSize: 1,
+    transport: { send: async (batch) => void analyticsSent.push(...batch) },
+  });
+
   const context = await createAppContext({
     env,
     logger: createSilentLogger(),
     prisma,
     redis: null,
+    analytics,
+    errorReporter: {
+      enabled: true,
+      captureException: (error, reportContext) =>
+        void errorsReported.push({ error, ...(reportContext ? { context: reportContext } : {}) }),
+      flush: async () => undefined,
+    },
   });
   const app = await buildApp(context);
   await app.ready();
@@ -49,6 +78,8 @@ export async function createHarness(overrides: Record<string, string> = {}): Pro
     app,
     context,
     prisma,
+    analyticsSent,
+    errorsReported,
     close: async () => {
       await app.close();
       await context.hub.close();

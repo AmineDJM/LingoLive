@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   SessionStatus,
   type Plan,
@@ -100,6 +101,10 @@ export class SessionService {
     await this.usage.recordSessionStarted(actor, session.id);
     this.context.metrics.recordLatency('session.create', Date.now() - started);
     this.context.metrics.increment(`session.created.${request.kind}`);
+    this.context.analytics.capture('session_started', analyticsSubject(actor), {
+      kind: request.kind,
+      readingLanguage: request.readingLanguage ?? 'original',
+    });
 
     return this.toContract(session, session.slots, 0);
   }
@@ -166,6 +171,13 @@ export class SessionService {
       sessionId,
       durationSeconds,
       reason: 'USER_ENDED',
+    });
+
+    this.context.analytics.capture('session_ended', analyticsSubject(actor), {
+      kind: session.kind,
+      durationSeconds,
+      segmentCount: session._count.segments,
+      result: options.reason ?? 'USER_ENDED',
     });
 
     return this.toContract(session, session.slots, session._count.segments);
@@ -355,4 +367,16 @@ export function defaultDiscussionSlots(
     readingLanguage: languages[position] ?? 'en',
     rotation: rotations[position] ?? 0,
   }));
+}
+
+/**
+ * The analytics subject.
+ *
+ * Never the user id and never the anonymous device hash: a truncated,
+ * one-way-derived value is enough to count distinct users without letting the
+ * analytics store join back to a LingoLive account.
+ */
+function analyticsSubject(actor: ActorIdentity): string {
+  const material = actor.userId ?? actor.anonymousHash ?? 'anonymous';
+  return `s_${createHash('sha256').update(material).digest('hex').slice(0, 16)}`;
 }

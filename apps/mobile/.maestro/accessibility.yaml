@@ -1,0 +1,30 @@
+# Very large text and dark mode must not break any layout.
+appId: ${MAESTRO_APP_ID}
+name: Accessibility and appearance
+---
+- launchApp
+- tapOn:
+    text: 'Settings'
+
+- tapOn:
+    id: 'theme-dark'
+- tapOn:
+    id: 'scale-up'
+- tapOn:
+    id: 'scale-up'
+- assertVisible:
+    id: 'scale-value'
+
+- tapOn:
+    text: 'Home'
+- assertVisible:
+    id: 'home-listen'
+- assertVisible:
+    id: 'home-discuss'
+- assertVisible:
+    id: 'home-join'
+
+- tapOn:
+    text: 'Settings'
+- tapOn:
+    id: 'theme-light'

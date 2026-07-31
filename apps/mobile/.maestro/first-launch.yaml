@@ -1,0 +1,41 @@
+# Onboarding, exactly once.
+#
+# The order asserted here is a product requirement, not a preference: the
+# microphone permission must be requested only after the app has explained
+# what the microphone is for.
+appId: ${MAESTRO_APP_ID}
+name: First launch and onboarding
+---
+- launchApp:
+    clearState: true
+- assertVisible: 'Understand what is being said, live.'
+- tapOn:
+    id: 'onboarding-continue'
+
+- assertVisible: 'Which language do you want to read in?'
+- tapOn:
+    id: 'onboarding-language-fr'
+- tapOn: 'Continue'
+
+# The privacy explanation appears before any system prompt.
+- assertVisible: 'Your microphone, your control'
+- assertVisible:
+    text: '.*not saved by default.*'
+- assertVisible:
+    id: 'onboarding-later'
+
+# Exploring without granting the microphone must remain possible.
+- tapOn:
+    id: 'onboarding-later'
+
+- assertVisible:
+    id: 'home-listen'
+- assertVisible:
+    id: 'home-discuss'
+- assertVisible:
+    id: 'home-join'
+
+# Onboarding never appears again.
+- launchApp
+- assertVisible:
+    id: 'home-listen'
