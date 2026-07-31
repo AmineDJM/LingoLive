@@ -150,6 +150,35 @@ function validate(parseServerEnv, file, failures, countChecked) {
     }
   }
 
+  // Every resource must sit in one region. Render's internal hostnames only
+  // resolve within a region, so a service in Frankfurt cannot reach a database
+  // in Oregon — and the failure is P1001, "can't reach database server", which
+  // is indistinguishable from a database that has not finished starting. A
+  // `databases:` entry with no `region` silently defaults to Oregon while the
+  // services above it say `frankfurt`; that is exactly how this shipped.
+  const placed = [
+    ...(blueprint.databases ?? []).map((d) => ({
+      kind: 'database',
+      name: d.name,
+      region: d.region,
+    })),
+    ...(blueprint.services ?? []).map((s) => ({ kind: s.type, name: s.name, region: s.region })),
+  ];
+  const missingRegion = placed.filter((r) => !r.region);
+  for (const resource of missingRegion) {
+    structural.push(
+      `${resource.name} (${resource.kind}) declares no region — it will default to Oregon ` +
+        'while the rest of the Blueprint is elsewhere',
+    );
+  }
+  const regions = new Set(placed.map((r) => r.region).filter(Boolean));
+  if (regions.size > 1) {
+    structural.push(
+      `resources are split across regions (${[...regions].join(', ')}) — ` +
+        'internal hostnames do not resolve across them',
+    );
+  }
+
   // Render refuses a reference to a reference: `envVarKey` may point at a
   // literal or a generated value, but not at a variable that is itself
   // `fromService`/`fromDatabase`. The message it gives ("cannot refer to

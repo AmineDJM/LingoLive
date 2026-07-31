@@ -38,6 +38,12 @@ databases:
     user: lingolive
     plan: basic-256mb
     postgresMajorVersion: '16'
+    # MUST match every service's region. Render's internal hostname
+    # (dpg-...-a) only resolves inside one region, so a Frankfurt service
+    # cannot reach an Oregon database — it fails with P1001, "can't reach
+    # database server", which reads exactly like a database that is still
+    # starting and is not. Omitting this defaults to Oregon.
+    region: frankfurt
     ipAllowList: [] # Render-internal only.
 
 services:

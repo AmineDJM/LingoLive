@@ -128,6 +128,20 @@ alone gives one environment that works, for a few dollars.
    Do **not** apply `render.production.yaml` to see whether it works. That is
    what staging is for.
 
+   **A code push is not a settings change.** Render stores `buildCommand`,
+   `preDeployCommand`, `region`, plans and env vars at _sync_ time. Pushing a
+   commit and hitting Manual Deploy runs the new code with the **old**
+   settings — so a fix to the Blueprint itself does nothing until you press
+   **Sync** on the Blueprint. If a log shows a command you already changed,
+   that is what happened.
+
+   **Every resource must be in one region.** Render's internal hostnames
+   (`dpg-…`, `red-…`) resolve only inside a region, and a `databases:` entry
+   with no `region:` silently defaults to Oregon. A Frankfurt service then
+   cannot reach it, and the error — P1001, "can't reach database server" —
+   looks exactly like a database that is still starting. `pnpm check:blueprint`
+   fails on a missing or mismatched region.
+
 2. **Fill the secrets.** Every `sync: false` variable must be set in the
    dashboard before the first deploy. The API refuses to boot in staging or
    production with a placeholder value.

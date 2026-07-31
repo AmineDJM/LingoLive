@@ -138,6 +138,22 @@ needs manual repair.
 
 ---
 
+## P1001 "can't reach database server" on Render
+
+Two causes, and they look identical.
+
+1. **The database is in a different region.** Internal hostnames resolve only
+   within a region, and a `databases:` entry with no `region:` defaults to
+   Oregon while the services say something else. Permanent — retrying never
+   helps. `pnpm check:blueprint` catches it.
+2. **The database is still provisioning.** Only on a first apply, and only for
+   a few minutes. `infra/scripts/migrate.mjs` retries through it.
+
+Tell them apart by the clock: if it still fails ten minutes later, it is (1).
+
+Remember that a Blueprint fix needs **Sync**, not Manual Deploy — settings are
+stored at sync time, so a redeploy runs new code with old settings.
+
 ## A migration failed mid-deploy
 
 Render runs `prisma migrate deploy` as a **pre-deploy** command, so a failed
