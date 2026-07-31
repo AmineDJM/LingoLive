@@ -207,6 +207,8 @@ export const ptBR: Messages = {
   errors: {
     generic: 'Algo deu errado.',
     network: 'Conexão fraca — reconectando.',
+    serverUnreachable:
+      'O LingoLive não consegue falar com o servidor dele. Sua conexão não é o problema.',
     offline: 'A transcrição ao vivo precisa de conexão com a internet.',
     micUnavailable: 'O microfone não está disponível.',
     micPermissionDenied: 'O LingoLive precisa do microfone para transcrever.',

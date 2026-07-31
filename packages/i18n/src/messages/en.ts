@@ -212,6 +212,7 @@ export const en = {
   errors: {
     generic: 'Something went wrong.',
     network: 'Weak connection — reconnecting.',
+    serverUnreachable: 'LingoLive cannot reach its server. Nothing is wrong with your connection.',
     offline: 'Live transcription needs an internet connection.',
     micUnavailable: 'The microphone is not available.',
     micPermissionDenied: 'LingoLive needs microphone access to transcribe.',

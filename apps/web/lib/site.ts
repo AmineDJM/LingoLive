@@ -33,12 +33,14 @@ export const siteUrl = normalizeBaseUrl(
  *     dashboard takes effect without a rebuild;
  *   - no mixed-content or CSP `connect-src` mismatch.
  *
- * Setting NEXT_PUBLIC_API_URL explicitly opts back into direct calls, for a
- * deployment that wants the API on its own domain.
+ * There is deliberately no way to opt out from here. An escape hatch that
+ * silently changed this from "same origin" to "some other origin" is exactly
+ * the kind of thing that gets left set by accident and reintroduces every
+ * failure above — including for someone who was told the variable was
+ * ignored. A deployment that genuinely wants the API on its own domain
+ * changes the rewrite in next.config.ts, visibly.
  */
-export const apiUrl = process.env.NEXT_PUBLIC_API_URL
-  ? normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL)
-  : '';
+export const apiUrl = '';
 
 export const appEnv = process.env.NEXT_PUBLIC_APP_ENV ?? 'development';
 

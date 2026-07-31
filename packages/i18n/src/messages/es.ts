@@ -207,6 +207,8 @@ export const es: Messages = {
   errors: {
     generic: 'Algo ha salido mal.',
     network: 'Conexión débil: reconectando.',
+    serverUnreachable:
+      'LingoLive no consigue contactar con su servidor. Tu conexión no es el problema.',
     offline: 'La transcripción en directo necesita conexión a Internet.',
     micUnavailable: 'El micrófono no está disponible.',
     micPermissionDenied: 'LingoLive necesita acceso al micrófono para transcribir.',

@@ -212,6 +212,7 @@ export const ar: Messages = {
   errors: {
     generic: 'حدث خطأ ما.',
     network: 'اتصال ضعيف — جارٍ إعادة الاتصال.',
+    serverUnreachable: 'يتعذّر على LingoLive الوصول إلى خادمه. المشكلة ليست في اتصالك.',
     offline: 'يتطلب التفريغ المباشر اتصالًا بالإنترنت.',
     micUnavailable: 'الميكروفون غير متاح.',
     micPermissionDenied: 'يحتاج LingoLive إلى إذن الميكروفون للتفريغ.',

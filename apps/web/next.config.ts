@@ -20,11 +20,18 @@ const apiOrigin = normalizeBaseUrl(
   process.env.API_ORIGIN ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000',
 );
 
-/** Empty unless a deployment opts out of the proxy; see lib/site.ts. */
-const directApiUrl = process.env.NEXT_PUBLIC_API_URL
-  ? normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL)
-  : '';
 const appEnv = process.env.NEXT_PUBLIC_APP_ENV ?? 'development';
+
+// The browser never calls the API directly, so a proxy target left pointing at
+// localhost in a real deployment means every request dies at this server. It
+// cannot throw — `next start` re-reads this file and refusing here would stop
+// a running site — so it says so loudly in the log instead.
+if (appEnv !== 'development' && appEnv !== 'test' && /localhost|127\.0\.0\.1/.test(apiOrigin)) {
+  console.warn(
+    `\n[LingoLive] API_ORIGIN is ${apiOrigin} but this is a ${appEnv} deployment.\n` +
+      '           Every API call will fail. Set API_ORIGIN to the API service URL.\n',
+  );
+}
 
 /**
  * `NEXT_PUBLIC_*` values are inlined into the JavaScript at BUILD time.
@@ -44,9 +51,6 @@ function assertBuildTimeConfig(phase: string): void {
   if (appEnv === 'development' || appEnv === 'test') return;
 
   const problems: string[] = [];
-  if (directApiUrl && /localhost|127\.0\.0\.1/.test(directApiUrl)) {
-    problems.push(`NEXT_PUBLIC_API_URL points at ${directApiUrl}`);
-  }
   if (/localhost|127\.0\.0\.1/.test(process.env.NEXT_PUBLIC_SITE_URL ?? 'localhost')) {
     problems.push('NEXT_PUBLIC_SITE_URL points at localhost or is unset');
   }
@@ -71,10 +75,9 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  // 'self' covers every HTTP call: they go through the proxy below. The two
-  // extra origins are the WebSocket, which cannot be proxied, and a direct API
-  // when a deployment has opted out of the proxy.
-  `connect-src 'self' ${apiWs} ${directApiUrl}`.trim(),
+  // 'self' covers every HTTP call: they all go through the proxy below. The
+  // only other origin is the WebSocket, which a rewrite cannot proxy.
+  `connect-src 'self' ${apiWs}`,
   "media-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

@@ -208,6 +208,8 @@ export const fr: Messages = {
   errors: {
     generic: 'Une erreur est survenue.',
     network: 'Connexion faible — reconnexion en cours.',
+    serverUnreachable:
+      'LingoLive n’arrive pas à joindre son serveur. Votre connexion n’est pas en cause.',
     offline: 'La transcription en direct nécessite Internet.',
     micUnavailable: 'Le microphone n’est pas disponible.',
     micPermissionDenied: 'LingoLive a besoin du microphone pour transcrire.',

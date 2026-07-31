@@ -31,11 +31,15 @@ export function localisedError(t: Translator, code: string): string {
       return t.t('errors.sessionTooLong');
     case 'TRANSLATION_FAILED':
       return t.t('errors.translationUnavailable');
-    // The client could not reach the API at all. Distinct from the server
-    // answering "unavailable": the deployment is very likely misconfigured
-    // rather than down, and "check your connection" is the only advice a user
-    // can act on.
+    // The client could not reach the API at all.
+    //
+    // NOT `errors.network`. That string says "weak connection, reconnecting",
+    // which blames the user's network and promises a retry that is not
+    // happening. When the app is served from the same origin it calls, a
+    // failure here is the deployment's problem, not theirs — and a message
+    // that misdirects is worse than a vague one.
     case 'NETWORK_UNAVAILABLE':
+      return t.t('errors.serverUnreachable');
     case 'UPSTREAM_TIMEOUT':
       return t.t('errors.network');
     case 'SERVICE_UNAVAILABLE':
