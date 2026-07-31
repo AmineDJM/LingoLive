@@ -112,7 +112,10 @@ export class ApiClient {
       if (isAbortError(error)) {
         throw new LingoLiveError('UPSTREAM_TIMEOUT', 'The request timed out', { status: 504 });
       }
-      throw new LingoLiveError('SERVICE_UNAVAILABLE', 'Network request failed', {
+      // The request never got an answer: DNS, TLS, CORS or a wrong base URL.
+      // Reporting this as SERVICE_UNAVAILABLE blamed a server that may be
+      // perfectly healthy, and sent whoever was debugging to the wrong place.
+      throw new LingoLiveError('NETWORK_UNAVAILABLE', 'Could not reach the LingoLive API', {
         status: 503,
         cause: error,
       });

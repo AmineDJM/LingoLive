@@ -12,6 +12,38 @@ import { normalizeBaseUrl } from '@lingolive/contracts';
 // Same normalisation as lib/site.ts: a bare hostname from the platform must
 // become an origin, or the CSP's connect-src silently blocks every API call.
 const apiUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
+const appEnv = process.env.NEXT_PUBLIC_APP_ENV ?? 'development';
+
+/**
+ * `NEXT_PUBLIC_*` values are inlined into the JavaScript at BUILD time.
+ *
+ * Setting one in a dashboard after the fact changes nothing: the bundle in the
+ * browser still holds whatever was present when it was compiled. A deployment
+ * that builds before those variables are set ships a client hard-wired to
+ * `http://localhost:4000`, and every call from a real browser fails — which
+ * surfaces to the user as an unexplained error on the first tap, with a
+ * perfectly healthy API sitting right there.
+ *
+ * So the build refuses. Failing here costs a rebuild; shipping costs someone
+ * an afternoon wondering why nothing works.
+ */
+if (appEnv !== 'development' && appEnv !== 'test') {
+  const problems = [];
+  if (/localhost|127\.0\.0\.1/.test(apiUrl)) {
+    problems.push(`NEXT_PUBLIC_API_URL points at ${apiUrl}`);
+  }
+  if (/localhost|127\.0\.0\.1/.test(process.env.NEXT_PUBLIC_SITE_URL ?? 'localhost')) {
+    problems.push('NEXT_PUBLIC_SITE_URL points at localhost or is unset');
+  }
+  if (problems.length > 0) {
+    throw new Error(
+      `This build is for NEXT_PUBLIC_APP_ENV=${appEnv}, but:\n` +
+        problems.map((problem) => `  - ${problem}`).join('\n') +
+        '\n\nThese are baked into the browser bundle at build time. Set them on the\n' +
+        'service, then build again — changing them without rebuilding has no effect.',
+    );
+  }
+}
 const apiWs = apiUrl.replace(/^http/, 'ws');
 const isDev = process.env.NODE_ENV !== 'production';
 

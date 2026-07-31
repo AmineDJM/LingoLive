@@ -10,6 +10,7 @@ import { localizedPath } from '@/lib/site';
 import { Alert, Button, Card, LiveIndicator, VisuallyHidden } from './ui';
 import { Transcript } from './transcript';
 import { LanguagePicker } from './language-picker';
+import { localisedError } from '@/lib/errors';
 
 /**
  * Listen mode.
@@ -121,7 +122,7 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
 
           {session.errorCode ? (
             <Alert tone="danger" title={t.t('errors.generic')}>
-              {session.errorCode}
+              {localisedError(t, session.errorCode)}
             </Alert>
           ) : null}
 

@@ -10,6 +10,7 @@ import {
 import { SessionClient, TranscriptStore, type RenderedLine } from '@lingolive/realtime-core';
 import { createTranslator } from '@lingolive/i18n';
 import { createApiClient, getAnonymousId } from '@/lib/client';
+import { errorCodeOf, localisedError } from '@/lib/errors';
 import { Alert, Button, Card, LiveIndicator } from './ui';
 import { Transcript } from './transcript';
 import { LanguagePicker } from './language-picker';
@@ -314,30 +315,4 @@ export function JoinScreen({ locale, initialCode }: { locale: UiLocale; initialC
       </Card>
     </div>
   );
-}
-
-function errorCodeOf(error: unknown): string {
-  return typeof error === 'object' && error && 'code' in error
-    ? String((error as { code: unknown }).code)
-    : 'INTERNAL_ERROR';
-}
-
-/** Error codes are mapped to localised copy — never shown raw to a user. */
-function localisedError(t: ReturnType<typeof createTranslator>, code: string): string {
-  switch (code) {
-    case 'INVALID_ACCESS_CODE':
-      return t.t('errors.invalidCode');
-    case 'ACCESS_CODE_EXPIRED':
-      return t.t('errors.codeExpired');
-    case 'SESSION_ALREADY_ENDED':
-      return t.t('errors.sessionEnded');
-    case 'SESSION_FULL':
-      return t.t('errors.sessionFull');
-    case 'SERVICE_UNAVAILABLE':
-      return t.t('errors.serverUnavailable');
-    case 'RATE_LIMITED':
-      return t.t('errors.generic');
-    default:
-      return t.t('errors.generic');
-  }
 }

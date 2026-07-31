@@ -89,12 +89,32 @@ describe('ApiClient', () => {
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
   });
 
-  it('turns a network failure into SERVICE_UNAVAILABLE rather than an opaque throw', async () => {
-    const fetchFn = vi.fn(async (_url: string, _init?: RequestInit) => {
-      throw new TypeError('Failed to fetch');
+  it('distinguishes "could not reach the server" from "the server says it is down"', async () => {
+    // These are different problems with different fixes, and conflating them
+    // sends whoever is debugging to the wrong place: a failed fetch is a wrong
+    // API URL or a blocked origin far more often than a sick server.
+    const unreachable = new ApiClient({
+      baseUrl: 'https://api.test',
+      fetchFn: vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }) as never,
     });
-    const client = new ApiClient({ baseUrl: 'https://api.test', fetchFn: fetchFn as never });
-    await expect(client.me()).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
+    await expect(unreachable.me()).rejects.toMatchObject({ code: 'NETWORK_UNAVAILABLE' });
+
+    const refusing = new ApiClient({
+      baseUrl: 'https://api.test',
+      fetchFn: vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({ error: { code: 'SERVICE_UNAVAILABLE', message: 'down' } }),
+            {
+              status: 503,
+              headers: { 'content-type': 'application/json' },
+            },
+          ),
+      ) as never,
+    });
+    await expect(refusing.me()).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' });
   });
 
   it('turns an abort into UPSTREAM_TIMEOUT', async () => {

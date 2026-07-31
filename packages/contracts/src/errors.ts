@@ -16,6 +16,9 @@ export const API_ERROR_CODES = [
   'RATE_LIMITED',
   'INTERNAL_ERROR',
   'SERVICE_UNAVAILABLE',
+  // The client never reached the server. Distinct from the server saying it
+  // is unavailable: almost always a wrong API URL or a blocked origin.
+  'NETWORK_UNAVAILABLE',
   'UPSTREAM_TIMEOUT',
   // Session lifecycle
   'SESSION_NOT_FOUND',
@@ -77,6 +80,7 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   RATE_LIMITED: 429,
   INTERNAL_ERROR: 500,
   SERVICE_UNAVAILABLE: 503,
+  NETWORK_UNAVAILABLE: 503,
   UPSTREAM_TIMEOUT: 504,
   SESSION_NOT_FOUND: 404,
   SESSION_ALREADY_ENDED: 409,
