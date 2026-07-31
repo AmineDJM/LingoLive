@@ -134,7 +134,9 @@ services:
       - key: OPENAI_TRANSCRIPTION_MODEL
         value: gpt-live-transcribe
       - key: OPENAI_TRANSLATION_MODEL
-        sync: false # No default on purpose — set the model current for your account.
+        # No default on purpose. A TEXT/chat model — translation is a
+        # /chat/completions call, not a realtime or speech-to-speech model.
+        sync: false
       - key: REALTIME_TOKEN_TTL_SECONDS
         value: '60'
       # --- Quotas & cost ----------------------------------------------------
@@ -238,6 +240,7 @@ services:
       - key: OPENAI_TRANSCRIPTION_MODEL
         value: gpt-live-transcribe
       - key: OPENAI_TRANSLATION_MODEL
+        # A TEXT/chat model, as above.
         sync: false
       - key: REALTIME_TOKEN_TTL_SECONDS
         value: '60'

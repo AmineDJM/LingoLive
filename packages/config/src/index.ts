@@ -168,7 +168,7 @@ export const serverEnvSchema = z
           code: 'custom',
           path: ['OPENAI_TRANSLATION_MODEL'],
           message:
-            'OPENAI_TRANSLATION_MODEL is required when AI_PROVIDER=openai. Set it to the text model that is current and stable for your account.',
+            'OPENAI_TRANSLATION_MODEL is required when AI_PROVIDER=openai. It must be a TEXT/chat model — translation is a /chat/completions call with JSON mode, not a realtime or speech-to-speech model. Set the identifier that is current and stable for your account.',
         });
       }
     }
