@@ -210,6 +210,7 @@ export function Alert({
   return (
     <div
       role={tone === 'info' ? 'note' : 'alert'}
+      data-testid="alert"
       className={cx(
         'rounded-[var(--radius-md)] border p-4 text-[15px] leading-relaxed',
         tones[tone],

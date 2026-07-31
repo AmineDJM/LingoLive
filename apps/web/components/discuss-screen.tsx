@@ -11,6 +11,7 @@ import {
   startSpeaking as startSpeakingIn,
   stopSpeaking as stopSpeakingIn,
   targetLanguagesForTurn,
+  tileTransform,
   type DiscussionState,
   type DiscussionTile,
 } from '@lingolive/realtime-core';
@@ -101,7 +102,7 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
   };
 
   return (
-    <div className="flex flex-1 flex-col p-3">
+    <div className="flex min-h-0 flex-1 flex-col p-3">
       <header className="flex items-center gap-3 pb-3">
         <LiveIndicator
           label={session.context.state === 'listening' ? t.t('listen.live') : t.t('discuss.title')}
@@ -144,12 +145,14 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                 gridRow: `${placement?.row ?? 1} / span ${placement?.rowSpan ?? 1}`,
                 ['--ll-tile-rotation' as string]: `${tile.rotation}deg`,
               }}
+              data-quarter-turn={tileTransform(tile).isQuarterTurn}
               className={cx(
-                'll-tile flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-lg)] border-2 p-3',
+                'll-tile min-h-0 rounded-[var(--radius-lg)] border-2',
                 active ? 'border-live bg-live-soft' : 'border-border bg-surface',
               )}
               dir={tile.direction}
             >
+              <div className="ll-tile-content flex flex-col p-3">
               <div className="flex items-center gap-2 pb-2">
                 <button
                   type="button"
@@ -215,6 +218,7 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                     ? t.t('discuss.someoneElseSpeaking')
                     : t.t('discuss.speak')}
               </button>
+              </div>
             </section>
           );
         })}

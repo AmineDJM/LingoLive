@@ -12,10 +12,13 @@ import { LOCALE_URL_SEGMENTS, resolveLocale } from '@lingolive/contracts';
  */
 
 const PUBLIC_FILE = /\.[a-z0-9]+$/i;
+// `/offline` is deliberately locale-free: the service worker serves it when
+// the network is gone, and a redirect at that moment would fail.
 const EXEMPT_PREFIXES = [
   '/_next',
   '/api',
   '/icons',
+  '/offline',
   '/sw.js',
   '/manifest.webmanifest',
   '/robots.txt',

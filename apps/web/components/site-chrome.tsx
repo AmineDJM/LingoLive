@@ -1,10 +1,9 @@
 import Link from 'next/link';
 import type { UiLocale } from '@lingolive/contracts';
-import { UI_LOCALE_DEFINITIONS } from '@lingolive/contracts';
 import { createTranslator } from '@lingolive/i18n';
 import { FOOTER_NAV, getPageCopy } from '@/content';
 import { localizedPath } from '@/lib/site';
-import { cx } from './ui';
+import { LanguageSwitcher } from './language-switcher';
 
 /**
  * Public site header and footer.
@@ -53,60 +52,6 @@ export function SiteHeader({ locale }: { locale: UiLocale }) {
         </div>
       </nav>
     </header>
-  );
-}
-
-/**
- * Language switcher.
- *
- * A plain list of links, each a real URL for that locale — so it works without
- * JavaScript, is crawlable, and lets someone share the page in the language
- * they are reading it in. Language names are endonyms; there are no flags,
- * because a flag is a country and this is a language.
- */
-export function LanguageSwitcher({
-  locale,
-  label,
-  path = '',
-}: {
-  locale: UiLocale;
-  label: string;
-  path?: string;
-}) {
-  return (
-    <details className="relative">
-      <summary
-        className="flex cursor-pointer list-none items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-[15px] font-medium text-ink-secondary hover:text-ink"
-        aria-label={label}
-        data-touch-target
-      >
-        <GlobeIcon />
-        <span className="hidden sm:inline">
-          {UI_LOCALE_DEFINITIONS.find((d) => d.locale === locale)?.nativeName}
-        </span>
-      </summary>
-      <ul className="absolute end-0 z-20 mt-2 min-w-[13rem] rounded-[var(--radius-lg)] border border-border bg-surface p-2 shadow-[var(--ll-shadow-raised)]">
-        {UI_LOCALE_DEFINITIONS.map((definition) => (
-          <li key={definition.locale}>
-            <Link
-              href={localizedPath(definition.locale, path)}
-              hrefLang={definition.htmlLang}
-              lang={definition.htmlLang}
-              dir={definition.direction}
-              className={cx(
-                'flex items-center rounded-[var(--radius-sm)] px-3 py-2.5 text-[15px]',
-                definition.locale === locale
-                  ? 'bg-primary-soft font-semibold text-primary-text'
-                  : 'text-ink hover:bg-primary-soft',
-              )}
-              aria-current={definition.locale === locale ? 'true' : undefined}
-            >
-              {definition.nativeName}
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </details>
   );
 }
 
@@ -176,22 +121,3 @@ function LingoLiveMark() {
   );
 }
 
-function GlobeIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.6" />
-      <path
-        d="M2.5 10h15M10 2.5c2 2.2 3 4.8 3 7.5s-1 5.3-3 7.5c-2-2.2-3-4.8-3-7.5s1-5.3 3-7.5Z"
-        stroke="currentColor"
-        strokeWidth="1.6"
-      />
-    </svg>
-  );
-}

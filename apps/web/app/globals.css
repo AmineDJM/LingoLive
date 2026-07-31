@@ -142,11 +142,37 @@ a[role='button'],
   line-height: 1.45;
 }
 
-/* Discussion tiles rotate; their text direction must not. */
+/*
+ * Discussion tiles rotate; their text direction must not — and neither must
+ * their position.
+ *
+ * Rotating the tile box itself pushes a wide tile off-screen at 90°, which
+ * both breaks the layout and makes its controls unreachable. Instead the box
+ * stays put and its *content* rotates inside it. On a quarter turn the content
+ * layer swaps its dimensions using container-query units, so it still fills
+ * the cell after rotating.
+ */
 .ll-tile {
-  transform: rotate(var(--ll-tile-rotation, 0deg));
+  container-type: size;
+  position: relative;
+  overflow: hidden;
+}
+
+.ll-tile-content {
+  position: absolute;
+  inset: 0;
   transform-origin: center;
+  transform: rotate(var(--ll-tile-rotation, 0deg));
   transition: transform var(--ll-duration-base) var(--ll-easing-standard);
+}
+
+.ll-tile[data-quarter-turn='true'] .ll-tile-content {
+  inset: auto;
+  top: 50%;
+  left: 50%;
+  width: 100cqh;
+  height: 100cqw;
+  transform: translate(-50%, -50%) rotate(var(--ll-tile-rotation, 0deg));
 }
 
 [dir='rtl'] .ll-flip-icon {

@@ -35,8 +35,8 @@ export default async function AppLayout({
   const t = createTranslator(definition.locale);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
-      <main id="main" className="flex flex-1 flex-col">
+    <div className="flex h-dvh flex-col overflow-hidden bg-background">
+      <main id="main" className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {children}
       </main>
       <nav
