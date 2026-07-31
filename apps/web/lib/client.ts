@@ -92,8 +92,17 @@ export function createApiClient(): ApiClient {
   });
 }
 
+/**
+ * The WebSocket endpoint.
+ *
+ * A WebSocket cannot go through the Next rewrite, so it is the one call that
+ * still leaves this origin. In practice the URL used at runtime comes from the
+ * token response — the API knows its own public address — and this is only the
+ * fallback when the browser has to guess.
+ */
 export function realtimeUrl(): string {
-  return `${apiUrl.replace(/^http/, 'ws')}/realtime`;
+  const base = apiUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+  return `${base.replace(/^http/, 'ws')}/realtime`;
 }
 
 /**

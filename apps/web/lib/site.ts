@@ -20,7 +20,25 @@ export const siteUrl = normalizeBaseUrl(
   process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
 );
 
-export const apiUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
+/**
+ * Where the browser sends API calls.
+ *
+ * Empty means "this same origin", and that is the default on purpose. The
+ * Next server proxies `/api/*` to the real API (see next.config.ts), so the
+ * browser only ever talks to the site it was loaded from.
+ *
+ * This removes three ways to fail at once, all of which we hit:
+ *   - no cross-origin request, so CORS cannot block anything;
+ *   - no API address baked into the browser bundle, so setting it in a
+ *     dashboard takes effect without a rebuild;
+ *   - no mixed-content or CSP `connect-src` mismatch.
+ *
+ * Setting NEXT_PUBLIC_API_URL explicitly opts back into direct calls, for a
+ * deployment that wants the API on its own domain.
+ */
+export const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  ? normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL)
+  : '';
 
 export const appEnv = process.env.NEXT_PUBLIC_APP_ENV ?? 'development';
 

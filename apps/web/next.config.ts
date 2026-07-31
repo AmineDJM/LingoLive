@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { PHASE_PRODUCTION_BUILD } from 'next/constants.js';
 import { normalizeBaseUrl } from '@lingolive/contracts';
 
 /**
@@ -6,31 +7,45 @@ import { normalizeBaseUrl } from '@lingolive/contracts';
  *
  * The CSP is deliberately strict: this application asks people for microphone
  * access, so a script-injection foothold would be unusually damaging.
- * `connect-src` is widened at build time to the configured API origin because
- * the browser talks to it over both HTTPS and WSS.
+ * `connect-src` is 'self' for HTTP, because those calls go through the proxy
+ * below, plus the WebSocket origin, which cannot be proxied.
  */
-// Same normalisation as lib/site.ts: a bare hostname from the platform must
-// become an origin, or the CSP's connect-src silently blocks every API call.
-const apiUrl = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000');
+/**
+ * Where this server forwards `/api/*`.
+ *
+ * Read at server START, not at build time, because it is not a `NEXT_PUBLIC_*`
+ * value — so pointing the site at a different API is a restart, not a rebuild.
+ */
+const apiOrigin = normalizeBaseUrl(
+  process.env.API_ORIGIN ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000',
+);
+
+/** Empty unless a deployment opts out of the proxy; see lib/site.ts. */
+const directApiUrl = process.env.NEXT_PUBLIC_API_URL
+  ? normalizeBaseUrl(process.env.NEXT_PUBLIC_API_URL)
+  : '';
 const appEnv = process.env.NEXT_PUBLIC_APP_ENV ?? 'development';
 
 /**
  * `NEXT_PUBLIC_*` values are inlined into the JavaScript at BUILD time.
  *
- * Setting one in a dashboard after the fact changes nothing: the bundle in the
+ * Setting one in a dashboard afterwards changes nothing: the bundle in the
  * browser still holds whatever was present when it was compiled. A deployment
- * that builds before those variables are set ships a client hard-wired to
- * `http://localhost:4000`, and every call from a real browser fails — which
- * surfaces to the user as an unexplained error on the first tap, with a
- * perfectly healthy API sitting right there.
+ * that builds before those variables are set ships a client that cannot work,
+ * and the user sees an unexplained error on the first tap.
  *
- * So the build refuses. Failing here costs a rebuild; shipping costs someone
- * an afternoon wondering why nothing works.
+ * This runs on the BUILD phase only. `next start` re-evaluates this file, and
+ * the build-time variables are not necessarily in the runtime environment —
+ * throwing there would stop a perfectly good server from booting. (It did,
+ * once, which is how this acquired a phase check.)
  */
-if (appEnv !== 'development' && appEnv !== 'test') {
-  const problems = [];
-  if (/localhost|127\.0\.0\.1/.test(apiUrl)) {
-    problems.push(`NEXT_PUBLIC_API_URL points at ${apiUrl}`);
+function assertBuildTimeConfig(phase: string): void {
+  if (phase !== PHASE_PRODUCTION_BUILD) return;
+  if (appEnv === 'development' || appEnv === 'test') return;
+
+  const problems: string[] = [];
+  if (directApiUrl && /localhost|127\.0\.0\.1/.test(directApiUrl)) {
+    problems.push(`NEXT_PUBLIC_API_URL points at ${directApiUrl}`);
   }
   if (/localhost|127\.0\.0\.1/.test(process.env.NEXT_PUBLIC_SITE_URL ?? 'localhost')) {
     problems.push('NEXT_PUBLIC_SITE_URL points at localhost or is unset');
@@ -44,7 +59,7 @@ if (appEnv !== 'development' && appEnv !== 'test') {
     );
   }
 }
-const apiWs = apiUrl.replace(/^http/, 'ws');
+const apiWs = apiOrigin.replace(/^http/, 'ws');
 const isDev = process.env.NODE_ENV !== 'production';
 
 const csp = [
@@ -56,7 +71,10 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  `connect-src 'self' ${apiUrl} ${apiWs}`,
+  // 'self' covers every HTTP call: they go through the proxy below. The two
+  // extra origins are the WebSocket, which cannot be proxied, and a direct API
+  // when a deployment has opted out of the proxy.
+  `connect-src 'self' ${apiWs} ${directApiUrl}`.trim(),
   "media-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
@@ -124,6 +142,17 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  /**
+   * Everything under /api is forwarded to the real API by this server.
+   *
+   * The browser therefore only ever calls the origin it was loaded from: no
+   * CORS preflight to get wrong, no API address compiled into the bundle, no
+   * mixed-content or connect-src mismatch. Those were three separate ways the
+   * first deployment failed, and this removes all of them.
+   */
+  async rewrites() {
+    return [{ source: '/api/:path*', destination: `${apiOrigin}/api/:path*` }];
+  },
   async redirects() {
     return [
       // A bare code path is a common thing to type or paste.
@@ -135,4 +164,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default (phase: string): NextConfig => {
+  assertBuildTimeConfig(phase);
+  return nextConfig;
+};

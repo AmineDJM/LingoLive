@@ -225,15 +225,19 @@ services:
       # Public by definition — these ship to the browser. No secret belongs here.
       - key: NEXT_PUBLIC_APP_ENV
         value: staging
-      # Same reason as on the API: `property: host` gives an internal name, and
-      # `new URL()` on it throws during the build. Entered once, from the URL
-      # Render shows on each service.
-      - key: NEXT_PUBLIC_API_URL
-        sync: false # https://lingolive-api-staging-xxxx.onrender.com
-      - key: NEXT_PUBLIC_WEB_URL
-        sync: false # https://lingolive-web-staging-xxxx.onrender.com
+      # Where this server forwards /api/*. NOT a NEXT_PUBLIC_ value, so it is
+      # read when the server starts rather than compiled into the browser
+      # bundle: pointing the site at a different API is a restart, not a
+      # rebuild. The browser never sees it and never calls it directly.
+      - key: API_ORIGIN
+        fromService: { name: lingolive-api-staging, type: web, property: host }
+      # This one IS compiled in — it is the site's own public address, used for
+      # canonical tags, the sitemap and share links. Entered once, from the URL
+      # Render shows on this service.
       - key: NEXT_PUBLIC_SITE_URL
-        sync: false # the same value as NEXT_PUBLIC_WEB_URL
+        sync: false # https://lingolive-web-staging-xxxx.onrender.com
+      - key: NEXT_PUBLIC_WEB_URL
+        sync: false # the same value as NEXT_PUBLIC_SITE_URL
       - key: NEXT_PUBLIC_SENTRY_DSN
         value: '' # Optional; empty means the integration is off.
       - key: NEXT_PUBLIC_POSTHOG_KEY
