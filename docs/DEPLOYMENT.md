@@ -129,9 +129,33 @@ side: an API, a web app, a worker, Postgres and Redis for each.
    | ------------------------------------------------ | -------------------------------------------------------------------- |
    | `TRANSCRIPT_ENCRYPTION_KEY`                      | 32 raw bytes, base64. Losing it means losing every saved transcript. |
    | `OPENAI_API_KEY`                                 | **API service only.** Never on the web service.                      |
-   | `OPENAI_TRANSLATION_MODEL`                       | No default on purpose — set what is current for your account.        |
+   | `OPENAI_TRANSLATION_MODEL`                       | A **text/chat** model. No default on purpose — see below.            |
    | `ADMIN_EMAILS`                                   | Comma-separated; these accounts get the admin role.                  |
    | `DAILY_COST_LIMIT_USD`, `MONTHLY_COST_LIMIT_USD` | Production values come from a real budget.                           |
+
+   **Which translation model?** Ask the account rather than guessing — model
+   identifiers change, and the answer differs per account and per key:
+
+   ```bash
+   export OPENAI_API_KEY=...          # this shell only, never a committed file
+   pnpm check:provider                # lists text candidates, flags audio models
+   pnpm check:provider --all          # runs LingoLive's REAL translation call
+   ```
+
+   `--all` makes the exact request the API makes in production — same endpoint,
+   same JSON mode, same prompt — on a French sentence with a dose, a duration
+   and a proper noun, into English, Arabic and Portuguese. It reports which
+   models answered correctly and how long each took, then you set the fastest
+   one that got the numbers right.
+
+   Latency is the criterion, not raw capability: this call sits between a
+   sentence being spoken and a person reading it, with a budget of roughly
+   800 ms. A large reasoning model is the wrong trade for translating fifteen
+   words.
+
+   It must be a **text** model. A realtime or speech-to-speech model does not
+   answer `/chat/completions`, and the failure is confusing: transcription
+   keeps working while every translation returns `TRANSLATION_FAILED`.
 
    `SESSION_SIGNING_SECRET`, `AUTH_SECRET` and `ADMIN_API_TOKEN` use
    `generateValue: true` — Render generates them and you never see a placeholder.

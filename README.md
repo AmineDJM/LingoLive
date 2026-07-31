@@ -70,19 +70,20 @@ docs/           architecture, security, privacy, deployment, runbook, ADRs
 
 ## Commands
 
-| Command              | What it does                                          |
-| -------------------- | ----------------------------------------------------- |
-| `pnpm bootstrap`     | Fresh clone → running product                         |
-| `pnpm dev`           | API, web and worker together                          |
-| `pnpm dev:mobile`    | Expo dev server                                       |
-| `pnpm build`         | Build everything                                      |
-| `pnpm test`          | Unit and integration tests                            |
-| `pnpm test:e2e`      | Playwright, against a running app                     |
-| `pnpm test:load`     | k6 fan-out scenarios                                  |
-| `pnpm check:all`     | format, lint, types, tests, secret scan               |
-| `pnpm check:secrets` | Scan the tree _and the built bundles_ for credentials |
-| `pnpm db:migrate`    | Create and apply a migration                          |
-| `pnpm db:studio`     | Browse the database                                   |
+| Command               | What it does                                                    |
+| --------------------- | --------------------------------------------------------------- |
+| `pnpm bootstrap`      | Fresh clone → running product                                   |
+| `pnpm dev`            | API, web and worker together                                    |
+| `pnpm dev:mobile`     | Expo dev server                                                 |
+| `pnpm build`          | Build everything                                                |
+| `pnpm test`           | Unit and integration tests                                      |
+| `pnpm test:e2e`       | Playwright, against a running app                               |
+| `pnpm test:load`      | k6 fan-out scenarios                                            |
+| `pnpm check:all`      | format, lint, types, tests, secret scan                         |
+| `pnpm check:secrets`  | Scan the tree _and the built bundles_ for credentials           |
+| `pnpm check:provider` | Ask your OpenAI account which models exist, and prove one works |
+| `pnpm db:migrate`     | Create and apply a migration                                    |
+| `pnpm db:studio`      | Browse the database                                             |
 
 ## The rules this codebase enforces
 
