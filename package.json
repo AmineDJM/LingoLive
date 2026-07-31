@@ -1,0 +1,75 @@
+{
+  "name": "lingolive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LingoLive \u2014 Live Translation. Understand every conversation, live.",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "bootstrap": "node infra/scripts/bootstrap.mjs",
+    "dev": "turbo run dev --parallel",
+    "dev:web": "turbo run dev --filter=@lingolive/web",
+    "dev:api": "turbo run dev --filter=@lingolive/api",
+    "dev:worker": "turbo run dev --filter=@lingolive/worker",
+    "dev:mobile": "pnpm --filter @lingolive/mobile dev",
+    "build": "turbo run build",
+    "build:packages": "turbo run build --filter=./packages/*",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint -- --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,md,yml,yaml,css}\"",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "test:e2e": "pnpm --filter @lingolive/web test:e2e",
+    "test:load": "node infra/scripts/run-load-test.mjs",
+    "db:generate": "prisma generate --schema prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
+    "db:reset": "prisma migrate reset --schema prisma/schema.prisma",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio --schema prisma/schema.prisma",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down",
+    "infra:logs": "docker compose -f infra/docker-compose.yml logs -f",
+    "mobile:build:preview": "pnpm --filter @lingolive/mobile build:preview",
+    "mobile:build:production": "pnpm --filter @lingolive/mobile build:production",
+    "mobile:submit:ios": "pnpm --filter @lingolive/mobile submit:ios",
+    "mobile:submit:android": "pnpm --filter @lingolive/mobile submit:android",
+    "mobile:update": "pnpm --filter @lingolive/mobile update",
+    "check:secrets": "node infra/scripts/scan-secrets.mjs",
+    "check:all": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm check:secrets",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@lingolive/typescript-config": "workspace:*",
+    "@types/node": "22.20.0",
+    "eslint": "10.8.0",
+    "eslint-config-prettier": "10.1.8",
+    "prettier": "3.9.6",
+    "prisma": "6.19.3",
+    "tsx": "4.23.1",
+    "turbo": "2.10.8",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.65.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}

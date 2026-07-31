@@ -1,0 +1,14 @@
+node_modules
+dist
+build
+.next
+.turbo
+.expo
+coverage
+playwright-report
+test-results
+pnpm-lock.yaml
+prisma/generated
+prisma/migrations
+store/screenshots
+*.min.js
