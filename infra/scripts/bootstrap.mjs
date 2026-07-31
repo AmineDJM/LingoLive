@@ -146,7 +146,14 @@ async function main() {
   // 3. Schema and demo data
   if (await portOpen('127.0.0.1', 5432)) {
     log('▸ applying database migrations…');
-    const migrate = await run('pnpm', ['exec', 'prisma', 'migrate', 'deploy', '--schema', 'prisma/schema.prisma']);
+    const migrate = await run('pnpm', [
+      'exec',
+      'prisma',
+      'migrate',
+      'deploy',
+      '--schema',
+      'prisma/schema.prisma',
+    ]);
     record('migrations', migrate === 0 ? 'applied' : 'failed');
 
     if (migrate === 0) {

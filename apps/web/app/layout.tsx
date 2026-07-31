@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { themeStyleSheet, THEME_BOOTSTRAP_SCRIPT } from '@/lib/theme';
-import { siteName, siteTagline, siteUrl } from '@/lib/site';
+import { allowIndexing, siteName, siteTagline, siteUrl } from '@/lib/site';
 import { ServiceWorkerRegistration } from '@/components/service-worker';
 import './globals.css';
 
@@ -26,6 +26,9 @@ export const metadata: Metadata = {
     apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180' }],
   },
   manifest: '/manifest.webmanifest',
+  // robots.txt is advisory and only covers crawlers that fetch it; the meta
+  // tag travels with the page. A staging deployment needs both.
+  ...(allowIndexing ? {} : { robots: { index: false, follow: false } }),
 };
 
 export const viewport: Viewport = {

@@ -9,7 +9,12 @@ import {
   normalizeAccessCode,
   type BusinessSessionPreview,
 } from '@lingolive/contracts';
-import { parseJoinLink, SessionClient, TranscriptStore, type RenderedLine } from '@lingolive/realtime-core';
+import {
+  parseJoinLink,
+  SessionClient,
+  TranscriptStore,
+  type RenderedLine,
+} from '@lingolive/realtime-core';
 import { fontSize, MIN_TOUCH_TARGET, radius, spacing } from '@lingolive/design-tokens';
 import { useApp } from '@/hooks/use-app';
 import { createApiClient, deepLinkScheme, getAnonymousId, webBaseUrl } from '@/services/api';
@@ -131,7 +136,14 @@ export default function JoinScreen() {
         <View style={{ padding: spacing.base }}>
           <Heading level={2}>{preview.title}</Heading>
           <Body muted>{t.t('join.organizedBy', { organizer: preview.organizerName })}</Body>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.md,
+              marginTop: spacing.sm,
+            }}
+          >
             <LiveBadge label={t.t('join.live')} />
             <View style={{ flex: 1 }} />
             <Button
@@ -188,7 +200,11 @@ export default function JoinScreen() {
       <Screen style={{ justifyContent: 'center' }}>
         <Card>
           <Heading level={1}>{t.t('errors.sessionEnded')}</Heading>
-          <Button label={t.t('common.done')} style={{ marginTop: spacing.lg }} onPress={() => router.back()} />
+          <Button
+            label={t.t('common.done')}
+            style={{ marginTop: spacing.lg }}
+            onPress={() => router.back()}
+          />
         </Card>
       </Screen>
     );
@@ -237,7 +253,11 @@ export default function JoinScreen() {
                 onPress={() => setLanguage(candidate)}
               />
             ))}
-            <Button label={t.t('onboarding.step2Other')} variant="ghost" onPress={() => setSheetOpen(true)} />
+            <Button
+              label={t.t('onboarding.step2Other')}
+              variant="ghost"
+              onPress={() => setSheetOpen(true)}
+            />
           </View>
           <Button
             label={busy ? t.t('join.joining') : t.t('join.title')}
@@ -251,7 +271,11 @@ export default function JoinScreen() {
           </Body>
         </Card>
         {sheetOpen ? (
-          <LanguageSheet value={language} onChange={setLanguage} onClose={() => setSheetOpen(false)} />
+          <LanguageSheet
+            value={language}
+            onChange={setLanguage}
+            onClose={() => setSheetOpen(false)}
+          />
         ) : null}
       </Screen>
     );
@@ -325,7 +349,14 @@ export default function JoinScreen() {
           }}
         />
 
-        <Text style={{ color: theme.textMuted, textAlign: 'center', marginTop: spacing.base, fontSize: fontSize.caption }}>
+        <Text
+          style={{
+            color: theme.textMuted,
+            textAlign: 'center',
+            marginTop: spacing.base,
+            fontSize: fontSize.caption,
+          }}
+        >
           {t.t('plans.joinAlwaysFree')}
         </Text>
       </Card>

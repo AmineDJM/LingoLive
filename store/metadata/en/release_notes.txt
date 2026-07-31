@@ -1,0 +1,7 @@
+First release.
+
+- Listen: live transcription and translation of what you hear
+- Discuss: 2 to 4 people around one phone, each reading their own language
+- Join: enter a 6-digit code or scan a QR to follow a live session
+
+Audio is never recorded. Transcripts are kept only if you ask.

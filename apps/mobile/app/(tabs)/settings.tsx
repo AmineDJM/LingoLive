@@ -53,7 +53,14 @@ export default function SettingsScreen() {
 
         <Card>
           <Body style={{ fontWeight: '600' }}>{t.t('settings.interfaceLanguage')}</Body>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: spacing.sm,
+              marginTop: spacing.md,
+            }}
+          >
             {UI_LOCALE_DEFINITIONS.map((definition) => (
               <Button
                 key={definition.locale}
@@ -69,7 +76,9 @@ export default function SettingsScreen() {
 
           <Body style={{ fontWeight: '600' }}>{t.t('settings.readingLanguage')}</Body>
           <Button
-            label={findLanguage(preferences.readingLanguage)?.nativeName ?? preferences.readingLanguage}
+            label={
+              findLanguage(preferences.readingLanguage)?.nativeName ?? preferences.readingLanguage
+            }
             variant="secondary"
             testID="reading-language"
             style={{ marginTop: spacing.sm }}
@@ -97,7 +106,14 @@ export default function SettingsScreen() {
 
         <Card>
           <Body style={{ fontWeight: '600' }}>{t.t('settings.transcriptSize')}</Body>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: spacing.md,
+              marginTop: spacing.sm,
+            }}
+          >
             <Button
               label="A−"
               variant="secondary"

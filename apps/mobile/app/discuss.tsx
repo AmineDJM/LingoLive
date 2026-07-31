@@ -14,7 +14,13 @@ import {
   type DiscussionState,
   type DiscussionTile,
 } from '@lingolive/realtime-core';
-import { fontSize, MIN_TOUCH_TARGET, radius, SPEAK_BUTTON_SIZE, spacing } from '@lingolive/design-tokens';
+import {
+  fontSize,
+  MIN_TOUCH_TARGET,
+  radius,
+  SPEAK_BUTTON_SIZE,
+  spacing,
+} from '@lingolive/design-tokens';
 import { useApp } from '@/hooks/use-app';
 import { useSession } from '@/hooks/use-session';
 import { Body, Button, Card, Heading, Screen } from '@/components/ui';
@@ -147,7 +153,8 @@ export default function DiscussScreen() {
           const placement = placements.find((entry) => entry.tileId === tile.id);
           const active = discussion.activeSpeakerTileId === tile.id;
           const blocked = !canSpeak(discussion, tile.id);
-          const languageName = findLanguage(tile.readingLanguage)?.nativeName ?? tile.readingLanguage;
+          const languageName =
+            findLanguage(tile.readingLanguage)?.nativeName ?? tile.readingLanguage;
           const fullWidth = (placement?.columnSpan ?? 1) > 1;
 
           return (
@@ -184,7 +191,10 @@ export default function DiscussScreen() {
                     borderColor: theme.border,
                   }}
                 >
-                  <Text numberOfLines={1} style={{ color: theme.text, fontWeight: '600', fontSize: fontSize.caption }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{ color: theme.text, fontWeight: '600', fontSize: fontSize.caption }}
+                  >
                     {languageName}
                   </Text>
                 </Pressable>
@@ -249,12 +259,25 @@ export default function DiscussScreen() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderRadius: radius.md,
-                  backgroundColor: active ? theme.live : blocked ? theme.surfaceElevated : theme.primary,
+                  backgroundColor: active
+                    ? theme.live
+                    : blocked
+                      ? theme.surfaceElevated
+                      : theme.primary,
                   opacity: blocked ? 0.6 : 1,
                 }}
               >
-                <Text style={{ color: blocked ? theme.textMuted : theme.textOnPrimary, fontWeight: '700' }}>
-                  {active ? t.t('discuss.speaking') : blocked ? t.t('discuss.someoneElseSpeaking') : t.t('discuss.speak')}
+                <Text
+                  style={{
+                    color: blocked ? theme.textMuted : theme.textOnPrimary,
+                    fontWeight: '700',
+                  }}
+                >
+                  {active
+                    ? t.t('discuss.speaking')
+                    : blocked
+                      ? t.t('discuss.someoneElseSpeaking')
+                      : t.t('discuss.speak')}
                 </Text>
               </Pressable>
             </View>

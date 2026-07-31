@@ -1,0 +1,149 @@
+name: Deploy staging
+
+# Staging deploys automatically once CI is green on main, then smoke-tests
+# what it just deployed. A deploy that is not verified is not a deploy.
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      skip_smoke:
+        description: 'Skip the post-deploy smoke test'
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Render (staging)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Never deploy a red build.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_WEB_URL }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # Render deploy hooks are per-service URLs held as repository secrets.
+      # If they are absent the job reports that clearly instead of pretending
+      # to have deployed something.
+      - name: Check the deploy configuration
+        env:
+          API_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_API_STAGING }}
+          WEB_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_WEB_STAGING }}
+          WORKER_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_WORKER_STAGING }}
+        run: |
+          missing=0
+          for name in API_HOOK WEB_HOOK WORKER_HOOK; do
+            if [ -z "${!name}" ]; then
+              echo "::warning::$name is not configured — see docs/DEPLOYMENT.md"
+              missing=1
+            fi
+          done
+          if [ "$missing" = "1" ]; then
+            echo "::error::Render deploy hooks are not configured for staging."
+            exit 1
+          fi
+
+      # The API first: the web app talks to it, and migrations run in the
+      # API service's pre-deploy command.
+      - name: Deploy the API
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_API_STAGING }}"
+
+      - name: Deploy the worker
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WORKER_STAGING }}"
+
+      - name: Deploy the web app
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_WEB_STAGING }}"
+
+      - name: Wait for the API to report healthy
+        if: ${{ !inputs.skip_smoke }}
+        env:
+          API_URL: ${{ vars.STAGING_API_URL }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            if curl -fsS "$API_URL/health" | grep -q '"status":"ok"'; then
+              echo "API healthy after ${attempt}0s"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::The API did not become healthy within 10 minutes."
+          exit 1
+
+  smoke:
+    name: Smoke test
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: ${{ !inputs.skip_smoke }}
+    timeout-minutes: 15
+    env:
+      API_URL: ${{ vars.STAGING_API_URL }}
+      WEB_URL: ${{ vars.STAGING_WEB_URL }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: The API is up and reports its dependencies
+        run: |
+          set -euo pipefail
+          curl -fsS "$API_URL/health" | tee /tmp/health.json
+          grep -q '"status":"ok"' /tmp/health.json
+          curl -fsS "$API_URL/ready" | tee /tmp/ready.json
+          grep -q '"database":"ok"' /tmp/ready.json
+
+      - name: The API never advertises a provider key
+        run: |
+          set -euo pipefail
+          body=$(curl -fsS "$API_URL/api/v1/config")
+          echo "$body"
+          if echo "$body" | grep -qiE 'sk-|api_?key|secret'; then
+            echo "::error::The public config endpoint exposes something it should not."
+            exit 1
+          fi
+
+      - name: The marketing site renders in every locale
+        run: |
+          set -euo pipefail
+          for locale in en fr ar es pt-br it de; do
+            code=$(curl -o /dev/null -sw '%{http_code}' "$WEB_URL/$locale")
+            [ "$code" = "200" ] || { echo "::error::/$locale returned $code"; exit 1; }
+          done
+
+      - name: Staging is not indexable
+        run: |
+          set -euo pipefail
+          curl -fsS "$WEB_URL/robots.txt" | tee /tmp/robots.txt
+          grep -q "Disallow: /" /tmp/robots.txt
+
+      - name: A guest can start and end a session
+        run: |
+          set -euo pipefail
+          token=$(curl -fsS -X POST "$API_URL/api/v1/auth/guest" \
+            -H 'content-type: application/json' \
+            -d '{"anonymousId":"anon_smoke_test_0000000000000000","platform":"web","appVersion":"1.0.0","locale":"en"}' \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["accessToken"])')
+
+          session=$(curl -fsS -X POST "$API_URL/api/v1/sessions" \
+            -H 'content-type: application/json' -H "authorization: Bearer $token" \
+            -d '{"kind":"PERSONAL_LISTEN","readingLanguage":"fr"}' \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["session"]["id"])')
+
+          curl -fsS -X POST "$API_URL/api/v1/sessions/$session/end" \
+            -H 'content-type: application/json' -H "authorization: Bearer $token" \
+            -d '{"reportedAudioSeconds":0}' > /dev/null
+          echo "Guest session lifecycle OK"

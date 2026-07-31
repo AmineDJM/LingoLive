@@ -41,11 +41,7 @@ export interface AnalyticsOptions {
 
 export interface Analytics {
   readonly enabled: boolean;
-  capture(
-    event: string,
-    distinctId: string,
-    properties?: Readonly<Record<string, unknown>>,
-  ): void;
+  capture(event: string, distinctId: string, properties?: Readonly<Record<string, unknown>>): void;
   flush(): Promise<void>;
   /** Test/inspection aid — what would be sent, without sending it. */
   pending(): readonly AnalyticsPayload[];

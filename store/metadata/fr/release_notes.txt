@@ -1,0 +1,7 @@
+Première version.
+
+- Écouter : transcription et traduction en direct de ce que vous entendez
+- Discuter : 2 à 4 personnes autour d'un seul téléphone, chacune dans sa langue
+- Rejoindre : un code à 6 chiffres ou un QR code pour suivre une session en direct
+
+L'audio n'est jamais enregistré. Les transcriptions ne sont conservées que si vous le demandez.

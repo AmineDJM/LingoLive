@@ -59,5 +59,6 @@ pnpm-debug.log*
 # Local docker volumes
 infra/.data/
 
-# Generated screenshots (regenerate via scripts)
+# Generated screenshots (regenerate via store/screenshots/capture.mjs)
+store/screenshots/out/
 store/screenshots/generated/

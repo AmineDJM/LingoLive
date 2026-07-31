@@ -17,9 +17,30 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   const actions = [
-    { href: '/listen' as const, title: t.t('home.listenTitle'), body: t.t('home.listenSubtitle'), label: t.t('a11y.listenCard'), primary: true, testID: 'home-listen' },
-    { href: '/discuss' as const, title: t.t('home.discussTitle'), body: t.t('home.discussSubtitle'), label: t.t('a11y.discussCard'), primary: false, testID: 'home-discuss' },
-    { href: '/join' as const, title: t.t('home.joinTitle'), body: t.t('home.joinSubtitle'), label: t.t('a11y.joinCard'), primary: false, testID: 'home-join' },
+    {
+      href: '/listen' as const,
+      title: t.t('home.listenTitle'),
+      body: t.t('home.listenSubtitle'),
+      label: t.t('a11y.listenCard'),
+      primary: true,
+      testID: 'home-listen',
+    },
+    {
+      href: '/discuss' as const,
+      title: t.t('home.discussTitle'),
+      body: t.t('home.discussSubtitle'),
+      label: t.t('a11y.discussCard'),
+      primary: false,
+      testID: 'home-discuss',
+    },
+    {
+      href: '/join' as const,
+      title: t.t('home.joinTitle'),
+      body: t.t('home.joinSubtitle'),
+      label: t.t('a11y.joinCard'),
+      primary: false,
+      testID: 'home-join',
+    },
   ];
 
   return (

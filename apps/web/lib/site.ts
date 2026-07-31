@@ -24,6 +24,26 @@ export const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000
 
 export const appEnv = process.env.NEXT_PUBLIC_APP_ENV ?? 'development';
 
+/**
+ * Whether search engines may index this deployment at all.
+ *
+ * Production says yes. A staging or preview deployment must say no: two
+ * indexable copies of the marketing site compete with each other, and a
+ * preview URL is not something we want in search results.
+ *
+ * The explicit flag wins in both directions, so an end-to-end run can exercise
+ * the production-shaped `robots.txt` without pretending to be production.
+ * Otherwise it is opt-in: a new environment is private until someone decides
+ * otherwise.
+ */
+export function shouldAllowIndexing(flag: string | undefined, environment: string): boolean {
+  if (flag === 'true') return true;
+  if (flag === 'false') return false;
+  return environment === 'production';
+}
+
+export const allowIndexing = shouldAllowIndexing(process.env.NEXT_PUBLIC_ALLOW_INDEXING, appEnv);
+
 export const siteName = 'LingoLive';
 export const siteTagline = 'LingoLive — Live Translation';
 export const deepLinkScheme = 'lingolive';

@@ -120,4 +120,3 @@ function LingoLiveMark() {
     </svg>
   );
 }
-

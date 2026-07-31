@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/AmineDJM/LingoLive/security/advisories/new
+    about: >-
+      Report privately through a security advisory. Never in a public issue —
+      especially anything involving transcripts, tokens or the provider key.
+  - name: Translation or wording problem
+    url: https://github.com/AmineDJM/LingoLive/issues/new?labels=i18n&template=bug_report.yml
+    about: Wrong, awkward or missing text in one of the seven interface languages.

@@ -1,0 +1,32 @@
+Comprenez chaque conversation, en direct.
+
+LingoLive transforme la parole en texte et la traduit au moment où elle est prononcée. Posez le téléphone sur la table et lisez ce qui se dit, dans votre langue, en moins d'une seconde.
+
+TROIS CHOSES. C'EST TOUT.
+
+ÉCOUTER
+Quelqu'un parle et vous devez suivre. Lancez Écouter, choisissez votre langue de lecture, et les mots apparaissent au fur et à mesure. Un médecin qui explique un diagnostic. Un avocat qui lit une clause. Un enseignant en réunion de parents. Une annonce dans une gare que vous ne connaissez pas.
+
+DISCUTER
+Deux, trois ou quatre personnes autour d'un même téléphone. Chacune choisit sa langue de lecture et oriente sa partie de l'écran vers elle. Chacun parle sa langue et lit celle des autres. Plus besoin de se passer le téléphone.
+
+REJOINDRE
+Quelqu'un partage un code à 6 chiffres, un QR code ou un lien. Scannez-le ou saisissez-le : vous lisez la session dans votre langue. Sans compte, et sans installation sur le web.
+
+CONÇU POUR LE TERRAIN
+Salles d'attente, guichets, cuisines, salles de classe, chantiers, postes-frontières. Texte large et lisible. Contraste élevé. Compatible VoiceOver et TalkBack. Prise en charge complète des langues qui s'écrivent de droite à gauche, dont l'arabe, avec une mise en page correcte — pas une interface latine dans laquelle on aurait collé de l'arabe.
+
+LA CONFIDENTIALITÉ EST LA RÈGLE, PAS UNE OPTION
+- Votre audio n'est jamais enregistré ni stocké. Il devient du texte, puis il disparaît.
+- Les transcriptions ne sont pas conservées, sauf demande explicite de votre part.
+- Aucun compte n'est nécessaire pour utiliser l'application.
+- Rien de ce que vous dites ne sert à entraîner quoi que ce soit.
+- Vous pouvez tout supprimer, depuis l'application, à tout moment.
+
+LANGUES DE L'INTERFACE
+Français, anglais, arabe, espagnol, portugais (Brésil), italien, allemand.
+
+LIMITES ASSUMÉES
+LingoLive est une traduction automatique. Elle est rapide et utile. Ce n'est pas un interprète assermenté, et elle ne doit pas être votre seul appui pour une décision médicale, juridique ou financière. La précision dépend du bruit ambiant, des accents et de la clarté de l'élocution.
+
+Des minutes gratuites chaque mois. Aucun compte requis pour commencer.

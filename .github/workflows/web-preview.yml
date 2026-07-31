@@ -1,0 +1,96 @@
+name: Web preview
+
+# Builds the web app for every pull request and posts what changed about the
+# things reviewers cannot see in a diff: bundle size, the localized routes and
+# whether the page is still accessible with reduced motion.
+on:
+  pull_request:
+    paths:
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/web-preview.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: web-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22.20.0'
+  PNPM_VERSION: '10.33.0'
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  preview:
+    name: Build and report
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_ENV: development
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: pnpm run build:packages
+
+      - name: Build the web app
+        run: pnpm --filter @lingolive/web build
+
+      - name: Measure the client bundle
+        id: size
+        run: |
+          set -euo pipefail
+          total=$(du -sk apps/web/.next/static | cut -f1)
+          echo "total_kb=$total" >> "$GITHUB_OUTPUT"
+          echo "### Client bundle" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`.next/static\` total: **${total} KB**" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Largest chunks | KB |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | ---: |" >> "$GITHUB_STEP_SUMMARY"
+          find apps/web/.next/static -name '*.js' -printf '%s %p\n' \
+            | sort -rn | head -10 \
+            | while read -r bytes path; do
+                echo "| \`$(basename "$path")\` | $((bytes / 1024)) |" >> "$GITHUB_STEP_SUMMARY"
+              done
+
+      - name: The provider key is not in the bundle
+        run: pnpm check:secrets
+
+      - name: Every locale still builds a route
+        run: |
+          set -euo pipefail
+          missing=0
+          for locale in en fr ar es pt-br it de; do
+            if ! find apps/web/.next/server/app -maxdepth 2 -name "$locale*" | grep -q .; then
+              echo "::warning::No prerendered output found for /$locale"
+              missing=$((missing + 1))
+            fi
+          done
+          echo "Locales without prerendered output: $missing" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-preview-${{ github.event.pull_request.number }}
+          path: apps/web/.next
+          retention-days: 5

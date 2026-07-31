@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { UI_LOCALES } from '@lingolive/contracts';
 import { ALL_PAGES, findContentProblems, GUIDES } from './index';
+import { shouldAllowIndexing } from '../lib/site';
 
 /**
  * The marketing corpus is data, so it can be checked like data. These tests
@@ -93,5 +94,20 @@ describe('marketing content', () => {
       expect(guide.publishedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(Object.keys(guide.copy).sort()).toEqual([...UI_LOCALES].sort());
     }
+  });
+});
+
+describe('indexing policy', () => {
+  it('indexes production and nothing else by default', () => {
+    expect(shouldAllowIndexing(undefined, 'production')).toBe(true);
+    expect(shouldAllowIndexing(undefined, 'staging')).toBe(false);
+    expect(shouldAllowIndexing(undefined, 'development')).toBe(false);
+    // A brand-new environment name is private until someone says otherwise.
+    expect(shouldAllowIndexing(undefined, 'preview-42')).toBe(false);
+  });
+
+  it('lets the explicit flag win in both directions', () => {
+    expect(shouldAllowIndexing('true', 'development')).toBe(true);
+    expect(shouldAllowIndexing('false', 'production')).toBe(false);
   });
 });

@@ -44,7 +44,13 @@ export function Screen({
   );
 }
 
-export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+export function Card({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
   const { theme } = useApp();
   return (
     <View
@@ -66,12 +72,15 @@ export function Card({ children, style }: { children: React.ReactNode; style?: S
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
-export const Button = forwardRef<View, PressableProps & {
-  label: string;
-  variant?: Variant;
-  loading?: boolean;
-  style?: StyleProp<ViewStyle>;
-}>(function Button({ label, variant = 'primary', loading, style, disabled, ...props }, ref) {
+export const Button = forwardRef<
+  View,
+  PressableProps & {
+    label: string;
+    variant?: Variant;
+    loading?: boolean;
+    style?: StyleProp<ViewStyle>;
+  }
+>(function Button({ label, variant = 'primary', loading, style, disabled, ...props }, ref) {
   const { theme } = useApp();
   const background =
     variant === 'primary'
@@ -193,7 +202,13 @@ export function LiveBadge({ label, paused }: { label: string; paused?: boolean }
           backgroundColor: paused ? theme.textMuted : theme.live,
         }}
       />
-      <Text style={{ color: paused ? theme.textSecondary : theme.liveText, fontWeight: '700', fontSize: fontSize.caption }}>
+      <Text
+        style={{
+          color: paused ? theme.textSecondary : theme.liveText,
+          fontWeight: '700',
+          fontSize: fontSize.caption,
+        }}
+      >
         {label}
       </Text>
     </View>
@@ -202,5 +217,13 @@ export function LiveBadge({ label, paused }: { label: string; paused?: boolean }
 
 export function Divider() {
   const { theme } = useApp();
-  return <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.border, marginVertical: spacing.base }} />;
+  return (
+    <View
+      style={{
+        height: StyleSheet.hairlineWidth,
+        backgroundColor: theme.border,
+        marginVertical: spacing.base,
+      }}
+    />
+  );
 }

@@ -1,0 +1,7 @@
+Prima versione.
+
+- Ascolta: trascrizione e traduzione dal vivo di ciò che senti
+- Discuti: da 2 a 4 persone attorno a un solo telefono, ognuna nella propria lingua
+- Unisciti: un codice di 6 cifre o un QR per seguire una sessione dal vivo
+
+L'audio non viene mai registrato. Le trascrizioni restano solo se lo chiedi tu.

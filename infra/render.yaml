@@ -1,0 +1,468 @@
+# =============================================================================
+# LingoLive — Render Blueprint
+# -----------------------------------------------------------------------------
+# Deploys staging and production side by side:
+#
+#   lingolive-api-{env}     Fastify + WebSocket           (web service)
+#   lingolive-web-{env}     Next.js                       (web service)
+#   lingolive-worker-{env}  retention & maintenance jobs  (worker)
+#   lingolive-db-{env}      PostgreSQL 16
+#   lingolive-redis-{env}   Redis (fan-out, rate limits, replay guard)
+#
+# Apply with the Render dashboard (Blueprints → New Blueprint Instance) or
+# `render blueprint launch`. See docs/DEPLOYMENT.md for the full walkthrough.
+#
+# Secrets are NEVER in this file. Every `sync: false` value must be filled in
+# the Render dashboard before the first deploy — the API refuses to boot with
+# a placeholder in staging or production.
+# =============================================================================
+
+previewsEnabled: true
+previewsExpireAfterDays: 7
+
+databases:
+  - name: lingolive-db-staging
+    databaseName: lingolive
+    user: lingolive
+    plan: basic-256mb
+    postgresMajorVersion: '16'
+    ipAllowList: [] # Render-internal only.
+
+  - name: lingolive-db-production
+    databaseName: lingolive
+    user: lingolive
+    plan: pro-4gb
+    postgresMajorVersion: '16'
+    ipAllowList: []
+
+services:
+  # ---------------------------------------------------------------------------
+  # Redis / Key-value
+  # ---------------------------------------------------------------------------
+  - type: keyvalue
+    name: lingolive-redis-staging
+    plan: starter
+    region: frankfurt
+    ipAllowList: []
+    maxmemoryPolicy: noeviction # Replay-guard keys must not be evicted early.
+
+  - type: keyvalue
+    name: lingolive-redis-production
+    plan: standard
+    region: frankfurt
+    ipAllowList: []
+    maxmemoryPolicy: noeviction
+
+  # ---------------------------------------------------------------------------
+  # API — staging
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: lingolive-api-staging
+    runtime: node
+    plan: starter
+    region: frankfurt
+    branch: main
+    rootDir: .
+    autoDeploy: true
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm run build:packages
+      pnpm exec prisma generate --schema prisma/schema.prisma
+      pnpm --filter @lingolive/api build
+    # Migrations run before the new instance takes traffic, and never in
+    # parallel with the old one serving it.
+    preDeployCommand: pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+    startCommand: node apps/api/dist/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: PNPM_VERSION
+        value: 10.33.0
+      - key: NODE_ENV
+        value: production
+      - key: APP_ENV
+        value: staging
+      - key: LOG_LEVEL
+        value: info
+      - key: PORT
+        value: '10000'
+      - key: DATABASE_URL
+        fromDatabase: { name: lingolive-db-staging, property: connectionString }
+      - key: REDIS_URL
+        fromService:
+          {
+            name: lingolive-redis-staging,
+            type: keyvalue,
+            property: connectionString,
+          }
+      - key: APP_BASE_URL
+        fromService: { name: lingolive-web-staging, type: web, property: host }
+      - key: WEB_BASE_URL
+        fromService: { name: lingolive-web-staging, type: web, property: host }
+      - key: API_BASE_URL
+        fromService: { name: lingolive-api-staging, type: web, property: host }
+      - key: CORS_ALLOWED_ORIGINS
+        fromService: { name: lingolive-web-staging, type: web, property: host }
+      - key: DEEP_LINK_SCHEME
+        value: lingolive
+      # --- Secrets: fill in the dashboard, never here -----------------------
+      - key: SESSION_SIGNING_SECRET
+        generateValue: true
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: ADMIN_API_TOKEN
+        generateValue: true
+      - key: TRANSCRIPT_ENCRYPTION_KEY
+        sync: false # 32 raw bytes, base64. node infra/scripts/generate-secrets.mjs
+      - key: TRANSCRIPT_ENCRYPTION_KEY_VERSION
+        value: '1'
+      - key: OPENAI_API_KEY
+        sync: false # Server-side only. Never in a web or mobile variable.
+      - key: ADMIN_EMAILS
+        sync: false
+      # --- AI ---------------------------------------------------------------
+      - key: AI_PROVIDER
+        value: openai
+      - key: OPENAI_TRANSCRIPTION_MODEL
+        value: gpt-live-transcribe
+      - key: OPENAI_TRANSLATION_MODEL
+        sync: false # No default on purpose — set the model current for your account.
+      - key: REALTIME_TOKEN_TTL_SECONDS
+        value: '60'
+      # --- Quotas & cost ----------------------------------------------------
+      - key: GUEST_MINUTES_PER_MONTH
+        value: '30'
+      - key: FREE_MINUTES_PER_MONTH
+        value: '120'
+      - key: PRO_MINUTES_PER_MONTH
+        value: '6000'
+      - key: DAILY_COST_LIMIT_USD
+        value: '25'
+      - key: MONTHLY_COST_LIMIT_USD
+        value: '200'
+      - key: COST_CIRCUIT_BREAKER_ENABLED
+        value: 'true'
+      # --- Observability (optional) ----------------------------------------
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_ENVIRONMENT
+        value: staging
+      - key: POSTHOG_KEY
+        sync: false
+      - key: ANALYTICS_ENABLED
+        value: 'false'
+      # --- Switches ---------------------------------------------------------
+      - key: ENABLE_DEV_SIMULATOR
+        value: 'true' # Staging only: lets QA drive a business session with no organizer.
+      - key: ENABLE_REQUEST_LOGGING
+        value: 'true'
+
+  # ---------------------------------------------------------------------------
+  # API — production
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: lingolive-api-production
+    runtime: node
+    plan: standard
+    region: frankfurt
+    branch: main
+    rootDir: .
+    # Production never deploys on push. A release is a deliberate act.
+    autoDeploy: false
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm run build:packages
+      pnpm exec prisma generate --schema prisma/schema.prisma
+      pnpm --filter @lingolive/api build
+    preDeployCommand: pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+    startCommand: node apps/api/dist/server.js
+    healthCheckPath: /health
+    numInstances: 2 # Realtime fan-out is Redis-backed, so instances are interchangeable.
+    envVars:
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: PNPM_VERSION
+        value: 10.33.0
+      - key: NODE_ENV
+        value: production
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: PORT
+        value: '10000'
+      - key: DATABASE_URL
+        fromDatabase:
+          { name: lingolive-db-production, property: connectionString }
+      - key: REDIS_URL
+        fromService:
+          {
+            name: lingolive-redis-production,
+            type: keyvalue,
+            property: connectionString,
+          }
+      - key: APP_BASE_URL
+        sync: false # https://lingolive.app once the domain is verified.
+      - key: WEB_BASE_URL
+        sync: false
+      - key: API_BASE_URL
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: DEEP_LINK_SCHEME
+        value: lingolive
+      - key: SESSION_SIGNING_SECRET
+        generateValue: true
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: ADMIN_API_TOKEN
+        generateValue: true
+      - key: TRANSCRIPT_ENCRYPTION_KEY
+        sync: false
+      - key: TRANSCRIPT_ENCRYPTION_KEY_VERSION
+        value: '1'
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: AI_PROVIDER
+        value: openai
+      - key: OPENAI_TRANSCRIPTION_MODEL
+        value: gpt-live-transcribe
+      - key: OPENAI_TRANSLATION_MODEL
+        sync: false
+      - key: REALTIME_TOKEN_TTL_SECONDS
+        value: '60'
+      - key: GUEST_MINUTES_PER_MONTH
+        value: '30'
+      - key: FREE_MINUTES_PER_MONTH
+        value: '120'
+      - key: PRO_MINUTES_PER_MONTH
+        value: '6000'
+      - key: DAILY_COST_LIMIT_USD
+        sync: false # Set from the real budget, not from a template.
+      - key: MONTHLY_COST_LIMIT_USD
+        sync: false
+      - key: COST_CIRCUIT_BREAKER_ENABLED
+        value: 'true'
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_ENVIRONMENT
+        value: production
+      - key: POSTHOG_KEY
+        sync: false
+      - key: ANALYTICS_ENABLED
+        value: 'false'
+      # Forced off in production by the config schema as well — belt and braces.
+      - key: ENABLE_DEV_SIMULATOR
+        value: 'false'
+      - key: ENABLE_REQUEST_LOGGING
+        value: 'false'
+
+  # ---------------------------------------------------------------------------
+  # Web — staging
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: lingolive-web-staging
+    runtime: node
+    plan: starter
+    region: frankfurt
+    branch: main
+    rootDir: .
+    autoDeploy: true
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm run build:packages
+      pnpm --filter @lingolive/web build
+    startCommand: pnpm --filter @lingolive/web start
+    healthCheckPath: /en
+    envVars:
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: PNPM_VERSION
+        value: 10.33.0
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '10000'
+      # Public by definition — these ship to the browser. No secret belongs here.
+      - key: NEXT_PUBLIC_APP_ENV
+        value: staging
+      - key: NEXT_PUBLIC_API_URL
+        fromService: { name: lingolive-api-staging, type: web, property: host }
+      - key: NEXT_PUBLIC_WEB_URL
+        fromService: { name: lingolive-web-staging, type: web, property: host }
+      - key: NEXT_PUBLIC_SITE_URL
+        fromService: { name: lingolive-web-staging, type: web, property: host }
+      - key: NEXT_PUBLIC_SENTRY_DSN
+        sync: false
+      - key: NEXT_PUBLIC_POSTHOG_KEY
+        sync: false
+      # Staging must never be indexed.
+      - key: NEXT_PUBLIC_ALLOW_INDEXING
+        value: 'false'
+
+  # ---------------------------------------------------------------------------
+  # Web — production
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: lingolive-web-production
+    runtime: node
+    plan: standard
+    region: frankfurt
+    branch: main
+    rootDir: .
+    autoDeploy: false
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm run build:packages
+      pnpm --filter @lingolive/web build
+    startCommand: pnpm --filter @lingolive/web start
+    healthCheckPath: /en
+    numInstances: 2
+    envVars:
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: PNPM_VERSION
+        value: 10.33.0
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '10000'
+      - key: NEXT_PUBLIC_APP_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_WEB_URL
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SENTRY_DSN
+        sync: false
+      - key: NEXT_PUBLIC_POSTHOG_KEY
+        sync: false
+      - key: NEXT_PUBLIC_ALLOW_INDEXING
+        value: 'true'
+
+  # ---------------------------------------------------------------------------
+  # Worker — retention, expiry, deletion requests, cost roll-up
+  # ---------------------------------------------------------------------------
+  - type: worker
+    name: lingolive-worker-staging
+    runtime: node
+    plan: starter
+    region: frankfurt
+    branch: main
+    rootDir: .
+    autoDeploy: true
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm run build:packages
+      pnpm exec prisma generate --schema prisma/schema.prisma
+      pnpm --filter @lingolive/api build
+      pnpm --filter @lingolive/worker build
+    startCommand: node apps/worker/dist/index.js
+    envVars:
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: PNPM_VERSION
+        value: 10.33.0
+      - key: NODE_ENV
+        value: production
+      - key: APP_ENV
+        value: staging
+      - key: DATABASE_URL
+        fromDatabase: { name: lingolive-db-staging, property: connectionString }
+      - key: REDIS_URL
+        fromService:
+          {
+            name: lingolive-redis-staging,
+            type: keyvalue,
+            property: connectionString,
+          }
+      - key: TRANSCRIPT_ENCRYPTION_KEY
+        sync: false
+      - key: TRANSCRIPT_ENCRYPTION_KEY_VERSION
+        value: '1'
+      - key: SESSION_SIGNING_SECRET
+        fromService:
+          {
+            name: lingolive-api-staging,
+            type: web,
+            envVarKey: SESSION_SIGNING_SECRET,
+          }
+      - key: AUTH_SECRET
+        fromService:
+          { name: lingolive-api-staging, type: web, envVarKey: AUTH_SECRET }
+      - key: RETENTION_UNSAVED_SESSION_HOURS
+        value: '1'
+      - key: RETENTION_BUSINESS_SESSION_DAYS
+        value: '7'
+      - key: RETENTION_TECHNICAL_LOG_DAYS
+        value: '30'
+      - key: WORKER_INTERVAL_MS
+        value: '300000'
+
+  - type: worker
+    name: lingolive-worker-production
+    runtime: node
+    plan: starter
+    region: frankfurt
+    branch: main
+    rootDir: .
+    autoDeploy: false
+    buildCommand: |
+      corepack enable
+      pnpm install --frozen-lockfile
+      pnpm run build:packages
+      pnpm exec prisma generate --schema prisma/schema.prisma
+      pnpm --filter @lingolive/api build
+      pnpm --filter @lingolive/worker build
+    startCommand: node apps/worker/dist/index.js
+    envVars:
+      - key: NODE_VERSION
+        value: 22.20.0
+      - key: PNPM_VERSION
+        value: 10.33.0
+      - key: NODE_ENV
+        value: production
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          { name: lingolive-db-production, property: connectionString }
+      - key: REDIS_URL
+        fromService:
+          {
+            name: lingolive-redis-production,
+            type: keyvalue,
+            property: connectionString,
+          }
+      - key: TRANSCRIPT_ENCRYPTION_KEY
+        sync: false
+      - key: TRANSCRIPT_ENCRYPTION_KEY_VERSION
+        value: '1'
+      - key: SESSION_SIGNING_SECRET
+        fromService:
+          {
+            name: lingolive-api-production,
+            type: web,
+            envVarKey: SESSION_SIGNING_SECRET,
+          }
+      - key: AUTH_SECRET
+        fromService:
+          { name: lingolive-api-production, type: web, envVarKey: AUTH_SECRET }
+      - key: RETENTION_UNSAVED_SESSION_HOURS
+        value: '1'
+      - key: RETENTION_BUSINESS_SESSION_DAYS
+        value: '7'
+      - key: RETENTION_TECHNICAL_LOG_DAYS
+        value: '30'
+      - key: WORKER_INTERVAL_MS
+        value: '300000'

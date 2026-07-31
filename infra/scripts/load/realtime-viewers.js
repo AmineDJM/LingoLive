@@ -91,7 +91,7 @@ export function setup() {
         '  curl -XPOST $API_BASE_URL/api/v1/dev/business/sessions -H "content-type: application/json" -d \'{"title":"load"}\'',
     );
   }
-  const preview = http.get(`${API}/api/v1/business/sessions/${CODE}/preview`);
+  const preview = http.get(`${API}/api/v1/business/sessions/${CODE}`);
   check(preview, { 'code is joinable': (response) => response.status === 200 });
   return { code: CODE };
 }
@@ -100,12 +100,12 @@ export function viewer(data) {
   const language = LANGUAGES[__VU % LANGUAGES.length];
 
   const joined = http.post(
-    `${API}/api/v1/business/sessions/join`,
-    JSON.stringify({ code: data.code, readingLanguage: language, displayName: null }),
+    `${API}/api/v1/business/join`,
+    JSON.stringify({ code: data.code, readingLanguage: language }),
     { headers: { 'content-type': 'application/json' }, tags: { name: 'join' } },
   );
 
-  const ok = check(joined, { 'joined': (response) => response.status === 200 });
+  const ok = check(joined, { joined: (response) => response.status === 200 });
   joinSuccess.add(ok);
   if (!ok) {
     connectFailures.add(1);

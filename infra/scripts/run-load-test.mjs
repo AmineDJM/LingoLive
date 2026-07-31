@@ -59,7 +59,9 @@ async function main() {
 
   const scenario = PROFILES[args.profile];
   if (!scenario) {
-    console.error(`Unknown profile "${args.profile}". Use one of: ${Object.keys(PROFILES).join(', ')}`);
+    console.error(
+      `Unknown profile "${args.profile}". Use one of: ${Object.keys(PROFILES).join(', ')}`,
+    );
     process.exit(1);
   }
 
@@ -117,7 +119,6 @@ async function createSimulatedSession() {
       title: 'Load test',
       sourceLanguage: 'fr',
       targetLanguages: ['en', 'ar', 'es'],
-      autoSpeak: true,
     }),
   });
   if (!response.ok) {
@@ -130,14 +131,17 @@ async function createSimulatedSession() {
     process.exit(1);
   }
   const payload = await response.json();
-  return payload.accessCode ?? payload.session?.accessCode;
+  return payload.code;
 }
 
 function runK6(script, env) {
   return new Promise((resolve, reject) => {
     const child = spawn('k6', ['run', script], {
       stdio: 'inherit',
-      env: { ...process.env, ...Object.fromEntries(Object.entries(env).map(([k, v]) => [k, String(v)])) },
+      env: {
+        ...process.env,
+        ...Object.fromEntries(Object.entries(env).map(([k, v]) => [k, String(v)])),
+      },
     });
     child.on('error', reject);
     child.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`k6 exited ${code}`))));

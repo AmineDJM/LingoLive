@@ -1,0 +1,7 @@
+Primeira versão.
+
+- Ouvir: transcrição e tradução ao vivo do que você escuta
+- Conversar: de 2 a 4 pessoas ao redor de um único celular, cada uma no seu idioma
+- Entrar: um código de 6 dígitos ou um QR para acompanhar uma sessão ao vivo
+
+O áudio nunca é gravado. As transcrições só ficam salvas se você pedir.

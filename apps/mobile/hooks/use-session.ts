@@ -194,7 +194,14 @@ export function useSession(options: UseSessionOptions) {
       setErrorCode(code);
       dispatch({ type: 'ERROR', code, message: 'Could not start', retryable: true });
     }
-  }, [dispatch, onEvent, options.autoStartAudio, options.kind, options.readingLanguage, options.slots]);
+  }, [
+    dispatch,
+    onEvent,
+    options.autoStartAudio,
+    options.kind,
+    options.readingLanguage,
+    options.slots,
+  ]);
 
   const pause = useCallback(async () => {
     await transportRef.current?.pause();

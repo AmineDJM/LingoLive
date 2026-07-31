@@ -106,7 +106,9 @@ export function TranscriptView({
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: theme.textOnPrimary, fontWeight: '700', fontSize: fontSize.bodySmall }}>
+          <Text
+            style={{ color: theme.textOnPrimary, fontWeight: '700', fontSize: fontSize.bodySmall }}
+          >
             ↓ {backToLiveLabel}
           </Text>
         </Pressable>

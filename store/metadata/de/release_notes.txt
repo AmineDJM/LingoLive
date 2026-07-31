@@ -1,0 +1,7 @@
+Erste Version.
+
+- Zuhören: Live-Transkription und Übersetzung dessen, was Sie hören
+- Sprechen: 2 bis 4 Personen um ein einziges Telefon, jede in ihrer Sprache
+- Beitreten: ein 6-stelliger Code oder ein QR-Code für eine laufende Sitzung
+
+Audio wird nie aufgezeichnet. Transkripte bleiben nur, wenn Sie es verlangen.

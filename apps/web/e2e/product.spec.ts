@@ -48,7 +48,10 @@ test.describe('Listen', () => {
     await page.getByTestId('language-chip').click();
     const picker = page.getByRole('dialog');
     await picker.getByPlaceholder(/search/i).fill('francais');
-    await picker.getByRole('button', { name: /Français/ }).first().click();
+    await picker
+      .getByRole('button', { name: /Français/ })
+      .first()
+      .click();
     await expect(page.getByTestId('language-chip')).toContainText('Français');
   });
 
@@ -89,7 +92,9 @@ test.describe('Discuss', () => {
     });
   }
 
-  test('rotates a single tile through 0/90/180/270 without touching the others', async ({ page }) => {
+  test('rotates a single tile through 0/90/180/270 without touching the others', async ({
+    page,
+  }) => {
     await page.goto('/en/discuss');
     await page.getByTestId('people-2').click();
 
@@ -117,7 +122,10 @@ test.describe('Discuss', () => {
     await page.getByTestId('tile-language-1').click();
     const picker = page.getByRole('dialog');
     await picker.getByPlaceholder(/search/i).fill('arabic');
-    await picker.getByRole('button', { name: /العربية/ }).first().click();
+    await picker
+      .getByRole('button', { name: /العربية/ })
+      .first()
+      .click();
 
     const tile = page.getByTestId('tile-1');
     await expect(tile).toHaveAttribute('data-direction', 'rtl');

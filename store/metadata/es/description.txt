@@ -1,0 +1,32 @@
+Entiende cada conversación, en directo.
+
+LingoLive convierte el habla en texto y lo traduce en el momento en que se pronuncia. Deja el teléfono sobre la mesa y lee lo que se dice, en tu idioma, en menos de un segundo.
+
+TRES COSAS. NADA MÁS.
+
+ESCUCHAR
+Alguien habla y necesitas seguirlo. Abre Escuchar, elige tu idioma de lectura y las palabras aparecen según se dicen. Un médico explicando un diagnóstico. Un abogado leyendo una cláusula. Un profesor en una reunión de padres. Un aviso en una estación que no conoces.
+
+CONVERSAR
+Dos, tres o cuatro personas alrededor de un mismo teléfono. Cada una elige su idioma de lectura y gira su parte de la pantalla hacia sí misma. Cada una habla su idioma y lee el de las demás. Sin pasarse el teléfono.
+
+UNIRSE
+Alguien comparte un código de 6 dígitos, un QR o un enlace. Escanéalo o escríbelo y ya estás leyendo la sesión en tu idioma. Sin cuenta y sin instalar nada en la web.
+
+PENSADO PARA SITIOS REALES
+Salas de espera, ventanillas, cocinas, aulas, obras, puestos fronterizos. Texto grande y legible. Alto contraste. Funciona con VoiceOver y TalkBack. Compatibilidad completa con idiomas de derecha a izquierda, incluido el árabe, con una maquetación correcta y no una interfaz latina con árabe pegado dentro.
+
+LA PRIVACIDAD ES LO PREDETERMINADO, NO UN AJUSTE
+- Tu audio nunca se graba ni se almacena. Se convierte en texto y desaparece.
+- Las transcripciones no se guardan salvo que lo pidas expresamente.
+- No hace falta cuenta para usar la aplicación.
+- Nada de lo que dices se usa para entrenar nada.
+- Puedes borrarlo todo, desde la propia aplicación, cuando quieras.
+
+IDIOMAS DE LA INTERFAZ
+Español, inglés, francés, árabe, portugués (Brasil), italiano y alemán.
+
+LÍMITES HONESTOS
+LingoLive es traducción automática. Es rápida y es útil. No es un intérprete jurado y no debería ser tu único apoyo en una decisión médica, legal o económica. La precisión depende del ruido de fondo, los acentos y la claridad al hablar.
+
+Minutos gratis cada mes. No necesitas cuenta para empezar.

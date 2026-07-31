@@ -34,7 +34,9 @@ export default function Onboarding() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: spacing.lg }}>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: spacing.lg }}
+      >
         {step === 0 ? (
           <Card>
             <Heading level={1}>{t.t('onboarding.step1Title')}</Heading>

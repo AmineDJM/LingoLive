@@ -1,0 +1,95 @@
+name: EAS update
+
+# Over-the-air JavaScript updates.
+#
+# What an OTA update may contain: JavaScript, images, copy, layout. What it may
+# NOT contain: anything requiring native code the installed binary does not
+# have. `runtimeVersion: { policy: 'fingerprint' }` enforces that — a bundle
+# whose native fingerprint differs is simply not delivered to that binary.
+#
+# Store policy also matters: an OTA update must not change what the app does
+# in a way the review was not aware of. Fixes and copy, not new capabilities.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'EAS update branch'
+        type: choice
+        options: [preview, production]
+        default: preview
+      message:
+        description: 'What this update changes'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eas-update-${{ inputs.branch }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22.20.0'
+  PNPM_VERSION: '10.33.0'
+
+jobs:
+  update:
+    name: Publish update to ${{ inputs.branch }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: ${{ inputs.branch == 'production' && 'production' || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: pnpm run build:packages
+
+      - name: Typecheck
+        run: pnpm --filter @lingolive/mobile typecheck
+
+      - name: No provider key can reach the bundle
+        run: pnpm check:secrets
+
+      - name: Publish
+        env:
+          EAS_PROJECT_ID: ${{ vars.EAS_PROJECT_ID }}
+          EXPO_OWNER: ${{ vars.EXPO_OWNER }}
+          EXPO_PUBLIC_APP_ENV: ${{ inputs.branch == 'production' && 'production' || 'staging' }}
+          EXPO_PUBLIC_API_URL: ${{ vars.PUBLIC_API_URL }}
+          EXPO_PUBLIC_WEB_URL: ${{ vars.PUBLIC_WEB_URL }}
+        run: |
+          pnpm --filter @lingolive/mobile exec eas update \
+            --branch "${{ inputs.branch }}" \
+            --message "${{ inputs.message }}" \
+            --non-interactive
+
+      - name: Record what was published
+        run: |
+          echo "### OTA update published" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- branch: \`${{ inputs.branch }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- message: ${{ inputs.message }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- commit: \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Only binaries with a matching native fingerprint will receive it." >> "$GITHUB_STEP_SUMMARY"

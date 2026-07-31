@@ -1,0 +1,7 @@
+Primera versión.
+
+- Escuchar: transcripción y traducción en directo de lo que oyes
+- Conversar: de 2 a 4 personas alrededor de un solo teléfono, cada una en su idioma
+- Unirse: un código de 6 dígitos o un QR para seguir una sesión en directo
+
+El audio nunca se graba. Las transcripciones solo se guardan si tú lo pides.

@@ -1,0 +1,56 @@
+name: Feature request
+description: Propose something LingoLive should do
+labels: [enhancement, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        LingoLive has three actions: **Listen**, **Discuss**, **Join**. Keeping
+        it that simple is a product decision, not an oversight. A proposal that
+        adds a fourth thing to the main screen has a high bar to clear.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: Who is stuck, and on what? Describe the situation, not the feature.
+      placeholder: |
+        In a hospital waiting room, a nurse needs to…
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+    validations:
+      required: true
+
+  - type: dropdown
+    id: placement
+    attributes:
+      label: Where would it live
+      options:
+        - Inside Listen
+        - Inside Discuss
+        - Inside Join
+        - Settings
+        - A new main action (please justify below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: How do people work around this today?
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints this respects
+      options:
+        - label: It does not require storing audio.
+        - label: It does not require an account before the user has seen the product work.
+        - label: It works, or degrades honestly, in all seven interface languages including Arabic.
+        - label: It does not put a fourth choice on the home screen.

@@ -1,0 +1,151 @@
+name: Security
+
+# Runs on every change and on a schedule, because a dependency that was clean
+# on Monday is not necessarily clean on Friday.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '17 4 * * 1' # Monday, 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+env:
+  NODE_VERSION: '22.20.0'
+  PNPM_VERSION: '10.33.0'
+
+jobs:
+  secrets:
+    name: Secret and key-exposure scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Full history: a key removed in the latest commit is still leaked.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Scan the working tree
+        run: pnpm check:secrets
+
+      - name: Scan the full history
+        run: |
+          set -euo pipefail
+          # The one rule that is absolute: a provider key must never appear in
+          # any commit, in any client bundle, under any name.
+          if git log -p --all | grep -nE '(sk-[A-Za-z0-9_-]{20,}|sk-proj-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16})' ; then
+            echo "::error::A provider credential appears in the git history."
+            exit 1
+          fi
+          if git log -p --all | grep -nE '(EXPO_PUBLIC|NEXT_PUBLIC)_[A-Z0-9_]*OPENAI' | grep -v 'eslint.config.mjs\|scan-secrets.mjs' ; then
+            echo "::error::A client-side OpenAI variable appears in the git history."
+            exit 1
+          fi
+          echo "History is clean."
+
+  dependencies:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # High and critical fail the build. Moderate is reported, because a
+      # build that always fails is a build nobody reads.
+      - name: Audit (high and critical)
+        run: pnpm audit --audit-level high --prod
+
+      - name: Audit (informational)
+        run: pnpm audit || true
+
+      - name: The lockfile matches the manifests
+        run: pnpm install --frozen-lockfile --lockfile-only --ignore-scripts
+
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'
+
+  headers:
+    name: Privacy invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: The service worker cannot cache private data
+        run: |
+          set -euo pipefail
+          # A regression here would put transcripts in a browser cache.
+          grep -q "function isPrivate" apps/web/public/sw.js
+          grep -q "if (isPrivate(request)) return;" apps/web/public/sw.js
+          grep -q "'/api/'" apps/web/public/sw.js
+          grep -q "authorization" apps/web/public/sw.js
+          for surface in listen discuss join history settings admin; do
+            grep -q "$surface" apps/web/public/sw.js || {
+              echo "::error::sw.js no longer treats /$surface as private"; exit 1;
+            }
+          done
+          echo "Service worker refuses API, authorized and product-surface responses."
+
+      - name: Product pages are excluded from indexing
+        run: |
+          set -euo pipefail
+          for path in listen discuss join history settings admin; do
+            grep -q "$path" apps/web/app/robots.ts || {
+              echo "::error::/$path is missing from robots.ts"; exit 1;
+            }
+          done
+          echo "robots.ts excludes every product surface."
+
+      - name: Audio is never written to storage
+        run: |
+          set -euo pipefail
+          # An audio column, an audio upload or an audio file write would all
+          # contradict the privacy promise the product makes on every screen.
+          if grep -rniE '(audioUrl|audioPath|audioBlob|storeAudio|saveAudio|uploadAudio)' \
+              --include='*.ts' --include='*.tsx' --include='*.prisma' \
+              apps packages prisma ; then
+            echo "::error::Something looks like it stores audio."
+            exit 1
+          fi
+          echo "No audio storage."

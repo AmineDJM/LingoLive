@@ -52,7 +52,7 @@ export default function apiBaseline() {
 
   group('register guest', () => {
     const response = http.post(
-      `${API}/api/v1/auth/device`,
+      `${API}/api/v1/auth/guest`,
       JSON.stringify({
         anonymousId: `anon_load_${__VU}_${__ITER}`,
         platform: 'web',
@@ -62,7 +62,7 @@ export default function apiBaseline() {
       { headers: { 'content-type': 'application/json' }, tags: { name: 'register' } },
     );
     registerLatency.add(response.timings.duration);
-    if (check(response, { 'registered': (r) => r.status === 200 })) {
+    if (check(response, { registered: (r) => r.status === 200 })) {
       token = response.json().accessToken;
     }
   });
@@ -79,9 +79,9 @@ export default function apiBaseline() {
       );
       createLatency.add(response.timings.duration);
       // 429 is a *correct* answer under load, not a failure of the server.
-      check(response, { 'created or throttled': (r) => r.status === 200 || r.status === 429 });
+      check(response, { 'created or throttled': (r) => r.status === 201 || r.status === 429 });
 
-      if (response.status === 200) {
+      if (response.status === 201) {
         const sessionId = response.json().session.id;
         http.post(
           `${API}/api/v1/sessions/${sessionId}/end`,
@@ -97,7 +97,7 @@ export default function apiBaseline() {
 
   if (CODE) {
     group('code preview', () => {
-      const response = http.get(`${API}/api/v1/business/sessions/${CODE}/preview`, {
+      const response = http.get(`${API}/api/v1/business/sessions/${CODE}`, {
         tags: { name: 'preview' },
       });
       check(response, { 'preview ok': (r) => r.status === 200 });

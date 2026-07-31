@@ -15,7 +15,9 @@ test.describe('localized marketing site', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 
-  test('serves each locale on its own URL with the right language and direction', async ({ page }) => {
+  test('serves each locale on its own URL with the right language and direction', async ({
+    page,
+  }) => {
     for (const [segment, lang, dir] of [
       ['fr', 'fr', 'ltr'],
       ['en', 'en', 'ltr'],

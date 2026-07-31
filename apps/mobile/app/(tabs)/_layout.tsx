@@ -18,20 +18,33 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: t.t('nav.home'), tabBarIcon: ({ color }) => <TabGlyph glyph="●" color={color} /> }}
+        options={{
+          title: t.t('nav.home'),
+          tabBarIcon: ({ color }) => <TabGlyph glyph="●" color={color} />,
+        }}
       />
       <Tabs.Screen
         name="history"
-        options={{ title: t.t('nav.history'), tabBarIcon: ({ color }) => <TabGlyph glyph="≡" color={color} /> }}
+        options={{
+          title: t.t('nav.history'),
+          tabBarIcon: ({ color }) => <TabGlyph glyph="≡" color={color} />,
+        }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: t.t('nav.settings'), tabBarIcon: ({ color }) => <TabGlyph glyph="⚙" color={color} /> }}
+        options={{
+          title: t.t('nav.settings'),
+          tabBarIcon: ({ color }) => <TabGlyph glyph="⚙" color={color} />,
+        }}
       />
     </Tabs>
   );
 }
 
 function TabGlyph({ glyph, color }: { glyph: string; color: ColorValue }) {
-  return <Text style={{ color, fontSize: 18 }} accessibilityElementsHidden>{glyph}</Text>;
+  return (
+    <Text style={{ color, fontSize: 18 }} accessibilityElementsHidden>
+      {glyph}
+    </Text>
+  );
 }

@@ -1,0 +1,327 @@
+name: CI
+
+# The gate every change passes. Nothing here needs an OpenAI account: the
+# whole suite runs with AI_PROVIDER=mock, which is also what proves mock mode
+# still works.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22.20.0'
+  PNPM_VERSION: '10.33.0'
+  TURBO_TELEMETRY_DISABLED: '1'
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Static checks — fast, no services
+  # ---------------------------------------------------------------------------
+  static:
+    name: Format, lint, types
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate --schema prisma/schema.prisma
+
+      - name: Build shared packages
+        run: pnpm run build:packages
+
+      - name: Prettier
+        run: pnpm format:check
+
+      - name: ESLint
+        run: pnpm lint
+
+      - name: TypeScript
+        run: pnpm typecheck
+
+  # ---------------------------------------------------------------------------
+  # Unit + integration tests against a real Postgres and a real Redis
+  # ---------------------------------------------------------------------------
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lingolive
+          POSTGRES_PASSWORD: lingolive
+          POSTGRES_DB: lingolive_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lingolive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      NODE_ENV: test
+      APP_ENV: test
+      LOG_LEVEL: silent
+      DATABASE_URL: postgresql://lingolive:lingolive@localhost:5432/lingolive_test?schema=public
+      # Integration tests deliberately run without Redis to exercise the
+      # single-instance fallback; the service above is here for the realtime
+      # job below.
+      AI_PROVIDER: mock
+      SESSION_SIGNING_SECRET: ci-session-signing-secret-32-characters-min
+      AUTH_SECRET: ci-auth-secret-that-is-long-enough-here
+      ADMIN_API_TOKEN: ci-admin-token
+      TRANSCRIPT_ENCRYPTION_KEY: Y2ktb25seS0zMmJ5dGUta2V5LWZvci10ZXN0cyEh
+      TRANSCRIPT_ENCRYPTION_KEY_VERSION: '1'
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate --schema prisma/schema.prisma
+
+      - name: Build shared packages
+        run: pnpm run build:packages
+
+      - name: Apply migrations
+        run: pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Migrations are reproducible from an empty database
+        run: pnpm exec prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$DATABASE_URL" --exit-code
+        continue-on-error: false
+
+      - name: Unit and integration tests
+        run: pnpm test
+
+      - name: Seed script runs
+        run: pnpm db:seed
+
+  # ---------------------------------------------------------------------------
+  # Builds — what actually ships
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build web, API and worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_ENV: test
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate --schema prisma/schema.prisma
+
+      - name: Build everything
+        run: pnpm build
+
+      # The only check that proves what actually ships: the emitted client
+      # bundles are searched for provider key material.
+      - name: No secrets in the built bundles
+        run: pnpm check:secrets
+
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: apps/web/.next
+          retention-days: 3
+
+  # ---------------------------------------------------------------------------
+  # End-to-end — real API, real Next.js server, real browser
+  # ---------------------------------------------------------------------------
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [static]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lingolive
+          POSTGRES_PASSWORD: lingolive
+          POSTGRES_DB: lingolive_e2e
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lingolive"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      NODE_ENV: production
+      APP_ENV: development
+      LOG_LEVEL: warn
+      PORT: '4000'
+      DATABASE_URL: postgresql://lingolive:lingolive@localhost:5432/lingolive_e2e?schema=public
+      REDIS_URL: redis://localhost:6379
+      AI_PROVIDER: mock
+      ENABLE_DEV_SIMULATOR: 'true'
+      SESSION_SIGNING_SECRET: ci-session-signing-secret-32-characters-min
+      AUTH_SECRET: ci-auth-secret-that-is-long-enough-here
+      ADMIN_API_TOKEN: ci-admin-token
+      TRANSCRIPT_ENCRYPTION_KEY: Y2ktb25seS0zMmJ5dGUta2V5LWZvci10ZXN0cyEh
+      TRANSCRIPT_ENCRYPTION_KEY_VERSION: '1'
+      CORS_ALLOWED_ORIGINS: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_ENV: development
+      # The suite asserts the production-shaped robots.txt, so indexing is
+      # explicitly on here rather than inferred from APP_ENV.
+      NEXT_PUBLIC_ALLOW_INDEXING: 'true'
+      E2E_BASE_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter @lingolive/web exec playwright install --with-deps chromium
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate --schema prisma/schema.prisma
+
+      - name: Build shared packages
+        run: pnpm run build:packages
+
+      - name: Apply migrations
+        run: pnpm exec prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Build API and web
+        run: pnpm --filter @lingolive/api build && pnpm --filter @lingolive/web build
+
+      - name: Start the API
+        run: |
+          node apps/api/dist/server.js &
+          for attempt in $(seq 1 40); do
+            if curl -sf http://localhost:4000/health >/dev/null; then
+              echo "API is up"; exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not start"; exit 1
+
+      - name: Run Playwright
+        run: pnpm --filter @lingolive/web test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
+
+  # ---------------------------------------------------------------------------
+  # Mobile — typecheck and config resolution. A real binary is built by EAS.
+  # ---------------------------------------------------------------------------
+  mobile:
+    name: Mobile checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: pnpm run build:packages
+
+      - name: Typecheck the mobile app
+        run: pnpm --filter @lingolive/mobile typecheck
+
+      - name: Lint the mobile app
+        run: pnpm --filter @lingolive/mobile lint
+
+      # Catches an invalid app.config.ts before it costs a 20-minute EAS build.
+      - name: Expo config resolves
+        run: pnpm --filter @lingolive/mobile exec expo config --type public > /dev/null
+
+      - name: Expo doctor
+        run: pnpm --filter @lingolive/mobile exec expo-doctor
+        continue-on-error: true

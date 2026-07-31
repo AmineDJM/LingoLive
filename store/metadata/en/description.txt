@@ -1,0 +1,32 @@
+Understand every conversation, live.
+
+LingoLive turns speech into text and translates it as it is spoken. Put the phone on the table and read what is being said, in your language, within a second.
+
+THREE THINGS. THAT'S ALL.
+
+LISTEN
+Someone is speaking and you need to follow. Start Listen, choose your reading language, and the words appear as they are said. A doctor explaining a diagnosis. A lawyer reading a clause. A teacher in a parent meeting. An announcement in a station you do not know.
+
+DISCUSS
+Two, three or four people around one phone. Each person picks their own reading language and turns their part of the screen toward themselves. Everyone speaks their own language and reads everyone else's. No passing the phone back and forth.
+
+JOIN
+Someone shares a 6-digit code, a QR code or a link. Scan or type it and you are reading the session in your language. No account, no download required on the web.
+
+BUILT FOR REAL PLACES
+Waiting rooms, counters, kitchens, classrooms, worksites, border posts. Large readable text. High contrast. Works with VoiceOver and TalkBack. Full support for right-to-left languages, including Arabic, with correct layout — not a Latin interface with Arabic pasted in.
+
+PRIVACY IS THE DEFAULT, NOT A SETTING
+- Your audio is never recorded and never stored. It is turned into text and discarded.
+- Transcripts are not saved unless you explicitly ask.
+- No account is needed to use the product.
+- Nothing you say is used to train anything.
+- You can delete everything, from inside the app, at any time.
+
+INTERFACE LANGUAGES
+English, French, Arabic, Spanish, Portuguese (Brazil), Italian, German.
+
+HONEST LIMITS
+LingoLive is machine translation. It is fast and it is useful. It is not a certified interpreter, and it should not be the only thing you rely on for a medical, legal or financial decision. Accuracy depends on background noise, accents and how clearly people speak.
+
+Free minutes every month. No account required to start.

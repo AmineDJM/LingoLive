@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
-import {
-  getRecordingPermissionsAsync,
-  requestRecordingPermissionsAsync,
-} from 'expo-audio';
+import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 
 /**
  * Microphone permission.

@@ -1,0 +1,86 @@
+name: Bug report
+description: Something in LingoLive does not work as it should
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste transcript content.** LingoLive is used for medical,
+        legal and personal conversations. If the bug involves specific text,
+        describe its shape ("a 40-word Arabic sentence") rather than quoting it.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+      placeholder: |
+        I opened Discuss with 4 people, rotated the second tile, and…
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options:
+        - iOS app
+        - Android app
+        - Web app
+        - Installed PWA
+        - Marketing site
+    validations:
+      required: true
+
+  - type: dropdown
+    id: action
+    attributes:
+      label: Which action
+      options:
+        - Listen
+        - Discuss
+        - Join
+        - Settings / account
+        - Not specific to one action
+    validations:
+      required: true
+
+  - type: input
+    id: languages
+    attributes:
+      label: Languages involved
+      description: Spoken language and reading language(s).
+      placeholder: spoken fr, reading ar + en
+
+  - type: input
+    id: version
+    attributes:
+      label: App version and device
+      placeholder: 1.0.0 (build 42), iPhone 14, iOS 18.2
+
+  - type: input
+    id: request-id
+    attributes:
+      label: Request ID
+      description: >
+        If an error was shown, it included a request ID. Copy it here — it
+        points at the exact server log line, and contains nothing private.
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: This report contains no transcript content and no credentials.
+          required: true

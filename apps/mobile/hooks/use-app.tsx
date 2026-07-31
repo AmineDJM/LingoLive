@@ -68,12 +68,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!preferences.hapticsEnabled) return;
       // Haptics are advisory: a device without a taptic engine must not throw.
       if (style === 'success') {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+          () => undefined,
+        );
       } else if (style === 'warning') {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
+          () => undefined,
+        );
       } else {
         void Haptics.impactAsync(
-          style === 'medium' ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light,
+          style === 'medium'
+            ? Haptics.ImpactFeedbackStyle.Medium
+            : Haptics.ImpactFeedbackStyle.Light,
         ).catch(() => undefined);
       }
     },

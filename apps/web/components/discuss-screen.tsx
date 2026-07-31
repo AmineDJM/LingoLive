@@ -153,71 +153,71 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
               dir={tile.direction}
             >
               <div className="ll-tile-content flex flex-col p-3">
-              <div className="flex items-center gap-2 pb-2">
-                <button
-                  type="button"
-                  onClick={() => setPickerFor(tile.id)}
-                  data-testid={`tile-language-${tile.position}`}
-                  aria-label={t.t('a11y.languageButton', { language: languageName })}
-                  className="truncate rounded-[var(--radius-full)] border border-border px-3 py-1.5 text-[13px] font-semibold text-ink"
-                >
-                  {languageName}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDiscussion(rotateTile(discussion, tile.id))}
-                  data-testid={`tile-rotate-${tile.position}`}
-                  aria-label={t.t('a11y.rotateButton', { language: languageName })}
-                  className="ms-auto rounded-[var(--radius-full)] border border-border px-3 py-1.5 text-[15px] text-ink"
-                >
-                  ↻
-                </button>
-              </div>
+                <div className="flex items-center gap-2 pb-2">
+                  <button
+                    type="button"
+                    onClick={() => setPickerFor(tile.id)}
+                    data-testid={`tile-language-${tile.position}`}
+                    aria-label={t.t('a11y.languageButton', { language: languageName })}
+                    className="truncate rounded-[var(--radius-full)] border border-border px-3 py-1.5 text-[13px] font-semibold text-ink"
+                  >
+                    {languageName}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDiscussion(rotateTile(discussion, tile.id))}
+                    data-testid={`tile-rotate-${tile.position}`}
+                    aria-label={t.t('a11y.rotateButton', { language: languageName })}
+                    className="ms-auto rounded-[var(--radius-full)] border border-border px-3 py-1.5 text-[15px] text-ink"
+                  >
+                    ↻
+                  </button>
+                </div>
 
-              <ol className="min-h-0 flex-1 overflow-y-auto text-[15px] leading-snug">
-                {tileLines.length === 0 ? (
-                  <li className="py-4 text-center text-ink-muted">
-                    {t.t('discuss.waitingForOthers')}
-                  </li>
-                ) : (
-                  tileLines.slice(-3).map((line) => (
-                    <li
-                      key={line.id}
-                      className={cx(
-                        'py-1',
-                        line.isFinal ? 'text-transcript-final' : 'text-transcript-partial',
-                      )}
-                    >
-                      {line.text}
+                <ol className="min-h-0 flex-1 overflow-y-auto text-[15px] leading-snug">
+                  {tileLines.length === 0 ? (
+                    <li className="py-4 text-center text-ink-muted">
+                      {t.t('discuss.waitingForOthers')}
                     </li>
-                  ))
-                )}
-              </ol>
+                  ) : (
+                    tileLines.slice(-3).map((line) => (
+                      <li
+                        key={line.id}
+                        className={cx(
+                          'py-1',
+                          line.isFinal ? 'text-transcript-final' : 'text-transcript-partial',
+                        )}
+                      >
+                        {line.text}
+                      </li>
+                    ))
+                  )}
+                </ol>
 
-              <button
-                type="button"
-                disabled={blocked}
-                onPointerDown={() => onSpeakStart(tile)}
-                onPointerUp={() => onSpeakEnd(tile)}
-                onPointerLeave={() => active && onSpeakEnd(tile)}
-                data-testid={`tile-speak-${tile.position}`}
-                aria-label={t.t('a11y.speakButton', { language: languageName })}
-                aria-pressed={active}
-                className={cx(
-                  'mt-2 flex w-full items-center justify-center rounded-[var(--radius-md)] py-4 text-[15px] font-bold',
-                  active
-                    ? 'bg-live text-on-primary'
+                <button
+                  type="button"
+                  disabled={blocked}
+                  onPointerDown={() => onSpeakStart(tile)}
+                  onPointerUp={() => onSpeakEnd(tile)}
+                  onPointerLeave={() => active && onSpeakEnd(tile)}
+                  data-testid={`tile-speak-${tile.position}`}
+                  aria-label={t.t('a11y.speakButton', { language: languageName })}
+                  aria-pressed={active}
+                  className={cx(
+                    'mt-2 flex w-full items-center justify-center rounded-[var(--radius-md)] py-4 text-[15px] font-bold',
+                    active
+                      ? 'bg-live text-on-primary'
+                      : blocked
+                        ? 'bg-surface text-ink-muted'
+                        : 'bg-primary text-on-primary',
+                  )}
+                >
+                  {active
+                    ? t.t('discuss.speaking')
                     : blocked
-                      ? 'bg-surface text-ink-muted'
-                      : 'bg-primary text-on-primary',
-                )}
-              >
-                {active
-                  ? t.t('discuss.speaking')
-                  : blocked
-                    ? t.t('discuss.someoneElseSpeaking')
-                    : t.t('discuss.speak')}
-              </button>
+                      ? t.t('discuss.someoneElseSpeaking')
+                      : t.t('discuss.speak')}
+                </button>
               </div>
             </section>
           );
