@@ -189,6 +189,27 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
         <Alert tone="warning">{t.t('errors.network')}</Alert>
       ) : null}
 
+      {/*
+        A live session could fail silently. Translation degrades to showing the
+        original text when the provider refuses it, which is the right
+        behaviour — but with no error surface here, someone reading in French
+        just kept seeing English with nothing to explain it, and it looked like
+        the product simply not translating.
+      */}
+      {session.errorCode ? (
+        <Alert tone="warning" testId="live-error">
+          {localisedError(t, session.errorCode)}
+          {session.errorReference ? (
+            <span
+              className="mt-2 block text-[13px] text-ink-muted"
+              data-testid="live-error-reference"
+            >
+              {t.t('errors.referenceId', { requestId: session.errorReference })}
+            </span>
+          ) : null}
+        </Alert>
+      ) : null}
+
       <Transcript
         lines={session.lines}
         readingLanguage={readingLanguage}

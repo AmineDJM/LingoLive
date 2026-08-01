@@ -478,41 +478,84 @@ export class OpenAiTranslationProvider implements TranslationProvider {
      */
     const streaming = single && typeof input.onDelta === 'function';
 
-    let response: Response;
-    try {
-      response = await this.fetchFn(`${this.env.OPENAI_BASE_URL}/chat/completions`, {
+    /**
+     * The request, with everything optional in one droppable layer.
+     *
+     * Streaming, the token ceiling and the temperature are all tuning: they
+     * make the translation arrive sooner and stay literal, and none of them is
+     * required to translate. Which of them a given model accepts is not
+     * something this code can know — `max_tokens` versus `max_completion_tokens`
+     * and a fixed temperature are exactly the parameters that differ between
+     * model families.
+     *
+     * That matters more here than anywhere else in the product, because a
+     * rejected translation does not raise an error a user ever sees: it is
+     * caught upstream and degrades to showing the original text. Someone
+     * reading in French simply keeps seeing English, with nothing on screen to
+     * say why. Untuned translation is worse than tuned; no translation at all
+     * looks like the product not working.
+     */
+    const chatBody = (omitTuning: boolean): Record<string, unknown> => ({
+      model,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+      ...(streaming && !omitTuning
+        ? {
+            stream: true,
+            // Usage is not reported on a streamed response unless it is asked
+            // for, and the cost ledger is not optional here.
+            stream_options: { include_usage: true },
+          }
+        : {}),
+      // JSON only when there is something to key by. A personal session has
+      // exactly one reading language, and wrapping one sentence in
+      // `{"translations":{"fr":…}}` spends output tokens — and therefore time,
+      // on the critical path between someone speaking and someone reading — on
+      // a structure with one slot in it.
+      ...(single ? {} : { response_format: { type: 'json_object' } }),
+      ...(omitTuning
+        ? {}
+        : {
+            // A translation is about as long as its input. Without a ceiling,
+            // one confused generation stalls the line for the full timeout.
+            max_tokens: Math.min(1200, 64 + estimateTokens(input.text) * 3 * targets.length),
+            temperature: 0,
+          }),
+    });
+
+    const postChat = (body: Record<string, unknown>): Promise<Response> =>
+      this.fetchFn(`${this.env.OPENAI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
           authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
           'content-type': 'application/json',
         },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: user },
-          ],
-          ...(streaming
-            ? {
-                stream: true,
-                // Usage is not reported on a streamed response unless it is
-                // asked for, and the cost ledger is not optional here.
-                stream_options: { include_usage: true },
-              }
-            : {}),
-          // JSON only when there is something to key by. A personal session has
-          // exactly one reading language, and wrapping one sentence in
-          // `{"translations":{"fr":…}}` spends output tokens — and therefore
-          // time, on the critical path between someone speaking and someone
-          // reading — on a structure with one slot in it.
-          ...(single ? {} : { response_format: { type: 'json_object' } }),
-          // A translation is about as long as its input. Without a ceiling, one
-          // confused generation stalls the line for the full timeout.
-          max_tokens: Math.min(1200, 64 + estimateTokens(input.text) * 3 * targets.length),
-          temperature: 0,
-        }),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(15_000),
       });
+
+    let streamed = streaming;
+    let response: Response;
+    try {
+      response = await postChat(chatBody(false));
+
+      if (response.status === 400) {
+        const failure = await describeProviderFailure(response);
+        this.logger.warn(
+          {
+            provider: 'openai',
+            model,
+            ...failure,
+            providerMessage: scrubForLog(failure.providerMessage),
+          },
+          'Translation provider rejected the request tuning; retrying without it. ' +
+            'Translations will not stream until the parameter above is corrected.',
+        );
+        streamed = false;
+        response = await postChat(chatBody(true));
+      }
     } catch (error) {
       this.logger.warn({ provider: 'openai', model }, 'Translation request failed to send');
       throw new LingoLiveError('TRANSLATION_FAILED', 'Translation provider unreachable', {
@@ -541,7 +584,7 @@ export class OpenAiTranslationProvider implements TranslationProvider {
     }
 
     const target = targets[0] as string;
-    const { content, usage } = streaming
+    const { content, usage } = streamed
       ? await readTranslationStream(response, (text) =>
           input.onDelta?.({ targetLanguage: target, text }),
         )

@@ -572,6 +572,21 @@ export async function registerRealtimeRoute(
         },
       });
 
+      // Every target failed. `translateSegment` degrades to the original text
+      // rather than losing the line, which is right — but silently, and a
+      // reader watching untranslated text with no explanation cannot tell that
+      // from the product being broken. Retryable: the session is fine, this
+      // sentence was not translated.
+      if (translations.length === 0) {
+        context.hub.broadcast(current.sessionId, {
+          type: 'error',
+          code: 'TRANSLATION_FAILED',
+          message: 'This segment could not be translated',
+          requestId: request.id,
+          retryable: true,
+        });
+      }
+
       // One translation per language, delivered to everyone reading it.
       for (const translation of translations) {
         context.hub.broadcastToLanguage(current.sessionId, translation.targetLanguage, {

@@ -527,3 +527,84 @@ describe('reading a streamed translation', () => {
     expect(result.content).toBe('Bonjour.');
   });
 });
+
+describe('when the provider rejects the translation tuning', () => {
+  interface ChatRequest {
+    max_tokens?: number;
+    temperature?: number;
+    stream?: boolean;
+    stream_options?: unknown;
+  }
+
+  /** Answers 400 to the first call and a translation to the second. */
+  function pickyChat(): { bodies: ChatRequest[]; fetchFn: typeof fetch } {
+    const bodies: ChatRequest[] = [];
+    const fetchFn = (async (_url: string | URL, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body ?? '{}')) as ChatRequest);
+      if (bodies.length === 1) {
+        return new Response(
+          JSON.stringify({
+            error: {
+              message: "Unsupported parameter: 'max_tokens'.",
+              type: 'invalid_request_error',
+              code: 'unsupported_parameter',
+              param: 'max_tokens',
+            },
+          }),
+          { status: 400, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      return new Response(
+        JSON.stringify({ choices: [{ message: { content: 'Bonjour.' } }], usage: {} }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    }) as unknown as typeof fetch;
+    return { bodies, fetchFn };
+  }
+
+  function translatorFor(fetchFn: typeof fetch): OpenAiTranslationProvider {
+    const env = parseServerEnv({
+      ...process.env,
+      AI_PROVIDER: 'openai',
+      OPENAI_API_KEY: 'test-provider-credential-placeholder',
+      OPENAI_TRANSLATION_MODEL: 'gpt-5.6-luna',
+    });
+    return new OpenAiTranslationProvider(env, createSilentLogger(), fetchFn);
+  }
+
+  it('still translates rather than falling back to the untranslated original', async () => {
+    // This is the failure mode that matters most in the whole product. A
+    // rejected translation raises nothing a user sees: it is caught upstream
+    // and degrades to the original text, so someone reading in French simply
+    // keeps seeing English with no explanation anywhere.
+    const { bodies, fetchFn } = pickyChat();
+    const results = await translatorFor(fetchFn).translateSegment({
+      text: 'Hello.',
+      sourceLanguage: 'en',
+      targetLanguages: ['fr'],
+    });
+
+    expect(results[0]?.translatedText).toBe('Bonjour.');
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]?.max_tokens).toBeDefined();
+    expect(bodies[1]?.max_tokens).toBeUndefined();
+    expect(bodies[1]?.temperature).toBeUndefined();
+  });
+
+  it('drops streaming on the retry so the reply shape matches how it is read', async () => {
+    // The retry is read as a whole body. Asking for a stream and then parsing
+    // it as JSON would turn one rejected parameter into a parse failure.
+    const { bodies, fetchFn } = pickyChat();
+    const results = await translatorFor(fetchFn).translateSegment({
+      text: 'Hello.',
+      sourceLanguage: 'en',
+      targetLanguages: ['fr'],
+      onDelta: () => {},
+    });
+
+    expect(bodies[0]?.stream).toBe(true);
+    expect(bodies[1]?.stream).toBeUndefined();
+    expect(bodies[1]?.stream_options).toBeUndefined();
+    expect(results[0]?.translatedText).toBe('Bonjour.');
+  });
+});
