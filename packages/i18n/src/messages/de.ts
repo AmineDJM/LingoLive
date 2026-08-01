@@ -67,6 +67,9 @@ export const de: Messages = {
   },
 
   listen: {
+    demoMode: 'Demomodus',
+    demoModeDetail:
+      'Auf diesem Server ist kein Transkriptionsdienst eingerichtet. Der Text unten ist ein Beispiel und nicht das, was um Sie herum gesprochen wird.',
     title: 'Zuhören',
     live: 'LIVE',
     paused: 'Pausiert',

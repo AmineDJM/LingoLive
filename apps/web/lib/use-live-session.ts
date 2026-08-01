@@ -54,6 +54,15 @@ export interface LiveSessionState {
   readonly errorCode: string | null;
   readonly errorReference: string | null;
   readonly connectionStatus: string;
+  /**
+   * True when the server has no transcription provider configured and the
+   * transcript is coming from fixtures rather than a microphone.
+   *
+   * Exposed so the UI can say so. Scripted speech and real speech looked
+   * identical on screen, which is how a deployment ran for a while looking
+   * like it worked while transcribing nothing anyone said.
+   */
+  readonly isDemoTranscription: boolean;
 }
 
 export function useLiveSession(options: UseLiveSessionOptions) {
@@ -66,6 +75,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
   // Kept alongside the code so the UI can show a reference someone can quote.
   const [errorReference, setErrorReference] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState('idle');
+  const [isDemoTranscription, setDemoTranscription] = useState(false);
   const [readingLanguage, setReadingLanguage] = useState(options.readingLanguage);
 
   const storeRef = useRef(new TranscriptStore());
@@ -204,6 +214,8 @@ export function useLiveSession(options: UseLiveSessionOptions) {
       // The client does not decide this and must not: a build that guessed
       // would either ask for the microphone when there is nothing to send it
       // to, or play scripted speech on a deployment paying for a real one.
+      setDemoTranscription(tokenResponse.config.transport === 'mock');
+
       const transport: RealtimeTranscriptionTransport =
         tokenResponse.config.transport === 'mock'
           ? new MockTranscriptionTransport({
@@ -321,6 +333,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
       errorCode,
       errorReference,
       connectionStatus,
+      isDemoTranscription,
     }),
     [
       context,
@@ -331,6 +344,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
       errorCode,
       errorReference,
       connectionStatus,
+      isDemoTranscription,
     ],
   );
 

@@ -179,6 +179,12 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
         </button>
       </header>
 
+      {session.isDemoTranscription ? (
+        <Alert tone="warning" title={t.t('listen.demoMode')} testId="demo-mode">
+          {t.t('listen.demoModeDetail')}
+        </Alert>
+      ) : null}
+
       {session.connectionStatus === 'reconnecting' ? (
         <Alert tone="warning">{t.t('errors.network')}</Alert>
       ) : null}

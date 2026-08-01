@@ -67,6 +67,9 @@ export const it: Messages = {
   },
 
   listen: {
+    demoMode: 'Modalità dimostrativa',
+    demoModeDetail:
+      'Questo server non ha un servizio di trascrizione configurato. Il testo qui sotto è un esempio, non ciò che viene detto intorno a te.',
     title: 'Ascolta',
     live: 'IN DIRETTA',
     paused: 'In pausa',

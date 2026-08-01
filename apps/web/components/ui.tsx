@@ -197,10 +197,13 @@ export function Alert({
   tone = 'info',
   title,
   children,
+  testId,
 }: {
   tone?: 'info' | 'warning' | 'danger';
   title?: string;
   children: ReactNode;
+  /** Overrides the shared `alert` hook when a test needs to find one specific alert. */
+  testId?: string;
 }) {
   const tones = {
     info: 'border-border bg-primary-soft text-ink',
@@ -210,7 +213,7 @@ export function Alert({
   return (
     <div
       role={tone === 'info' ? 'note' : 'alert'}
-      data-testid="alert"
+      data-testid={testId ?? 'alert'}
       className={cx(
         'rounded-[var(--radius-md)] border p-4 text-[15px] leading-relaxed',
         tones[tone],

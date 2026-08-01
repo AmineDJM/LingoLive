@@ -17,7 +17,7 @@ import {
 } from '@lingolive/realtime-core';
 import { createTranslator } from '@lingolive/i18n';
 import { useLiveSession } from '@/lib/use-live-session';
-import { Button, Card, cx, LiveIndicator } from './ui';
+import { Alert, Button, Card, cx, LiveIndicator } from './ui';
 import { LanguagePicker } from './language-picker';
 
 /**
@@ -115,6 +115,14 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
           {t.t('discuss.endDiscussion')}
         </Button>
       </header>
+
+      {session.isDemoTranscription ? (
+        <div className="pb-3">
+          <Alert tone="warning" title={t.t('listen.demoMode')} testId="demo-mode">
+            {t.t('listen.demoModeDetail')}
+          </Alert>
+        </div>
+      ) : null}
 
       {/*
         A 2×2 grid backs every layout. Two people occupy full-width halves,

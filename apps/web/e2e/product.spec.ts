@@ -16,6 +16,18 @@ async function startListening(page: Page): Promise<void> {
 }
 
 test.describe('Listen', () => {
+  test('says out loud when the transcript is a demonstration', async ({ page }) => {
+    // The suite runs against AI_PROVIDER=mock, so this is the scripted
+    // transcript. It must announce itself: fixture speech and real speech
+    // render identically, and a deployment once ran for a while looking like
+    // it worked while transcribing nothing anyone actually said.
+    await startListening(page);
+
+    const notice = page.getByTestId('demo-mode');
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText(/demonstration/i);
+  });
+
   test('shows partial text that is replaced by punctuated final text', async ({ page }) => {
     await startListening(page);
 

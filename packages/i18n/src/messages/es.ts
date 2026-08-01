@@ -67,6 +67,9 @@ export const es: Messages = {
   },
 
   listen: {
+    demoMode: 'Modo demostración',
+    demoModeDetail:
+      'Este servidor no tiene configurado un servicio de transcripción. El texto de abajo es un ejemplo, no lo que se dice a tu alrededor.',
     title: 'Escuchar',
     live: 'EN DIRECTO',
     paused: 'En pausa',

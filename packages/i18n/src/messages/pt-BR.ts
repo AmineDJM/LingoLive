@@ -66,6 +66,9 @@ export const ptBR: Messages = {
   },
 
   listen: {
+    demoMode: 'Modo demonstração',
+    demoModeDetail:
+      'Este servidor não tem um serviço de transcrição configurado. O texto abaixo é um exemplo, não o que está sendo dito ao seu redor.',
     title: 'Ouvir',
     live: 'AO VIVO',
     paused: 'Pausado',

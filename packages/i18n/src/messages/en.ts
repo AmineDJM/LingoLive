@@ -72,6 +72,9 @@ export const en = {
   },
 
   listen: {
+    demoMode: 'Demonstration mode',
+    demoModeDetail:
+      'This server has no transcription service configured. The text below is a sample, not what is being said around you.',
     title: 'Listen',
     live: 'LIVE',
     paused: 'Paused',
