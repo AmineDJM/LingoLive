@@ -95,6 +95,22 @@ function assertBuildTimeConfig(phase: string): void {
 const apiWs = apiOrigin.replace(/^http/, 'ws');
 const isDev = process.env.NODE_ENV !== 'production';
 
+/**
+ * Where the browser exchanges SDP with the transcription provider.
+ *
+ * Live transcription is the one thing the browser cannot route through this
+ * server: the audio goes peer-to-peer to the provider, and the offer/answer
+ * that sets it up is an ordinary `fetch` — so `connect-src` has to name the
+ * provider, or the microphone connection is blocked before it opens.
+ *
+ * Defaulted rather than required, because it is the same value for everyone
+ * using the default provider and one more variable to enter is one more to get
+ * wrong. Overridable for a proxied or self-hosted endpoint.
+ */
+const providerOrigin = normalizeBaseUrl(
+  process.env.REALTIME_PROVIDER_ORIGIN ?? 'https://api.openai.com',
+);
+
 const csp = [
   "default-src 'self'",
   // Next.js inlines a small bootstrap script; `strict-dynamic` is not usable
@@ -104,9 +120,11 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  // 'self' covers every HTTP call: they all go through the proxy below. The
-  // only other origin is the WebSocket, which a rewrite cannot proxy.
-  `connect-src 'self' ${apiWs}`,
+  // 'self' covers every HTTP call to our own API: they all go through the
+  // proxy below. The two exceptions cannot be proxied — the realtime WebSocket
+  // to the hub, and the SDP exchange that opens the microphone connection to
+  // the provider.
+  `connect-src 'self' ${apiWs} ${providerOrigin}`,
   "media-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

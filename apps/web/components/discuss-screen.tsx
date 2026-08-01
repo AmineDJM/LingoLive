@@ -48,7 +48,7 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
     readingLanguage: 'original',
     slots,
     // Audio is driven by the per-tile push-to-talk buttons, not on mount.
-    simulate: false,
+    autoStartAudio: false,
   });
 
   const begin = (people: DiscussParticipantCount): void => {

@@ -166,6 +166,13 @@ services:
       # entry point is /transcription_sessions. Changeable here, no deploy.
       - key: OPENAI_REALTIME_SESSION_PATH
         value: /client_secrets
+      # Where the browser POSTs its SDP offer to open the microphone
+      # connection. The server hands the finished URL to the client, so if the
+      # provider moves it this one value fixes web and mobile at once. If
+      # pressing Listen fails with a 404 from the provider, try an empty value
+      # (the offer then goes to OPENAI_REALTIME_URL itself).
+      - key: OPENAI_REALTIME_SDP_PATH
+        value: /calls
       # --- Quotas & cost ----------------------------------------------------
       - key: GUEST_MINUTES_PER_MONTH
         value: '30'

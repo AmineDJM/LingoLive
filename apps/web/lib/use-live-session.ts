@@ -6,12 +6,18 @@ import {
   MockTranscriptionTransport,
   SessionClient,
   TranscriptStore,
+  WebRtcTranscriptionTransport,
   initialContext,
   realtimeReducer,
   type RealtimeAction,
   type RealtimeContext,
 } from '@lingolive/realtime-core';
-import type { ServerEvent, TranscriptionConfig } from '@lingolive/contracts';
+import type {
+  RealtimeTranscriptionTransport,
+  ServerEvent,
+  TranscriptionConfig,
+} from '@lingolive/contracts';
+import { createBrowserTransportDependencies } from './browser-audio';
 import { createApiClient, ensureToken } from './client';
 import { errorCodeOf, errorReference as referenceFor } from './errors';
 
@@ -28,8 +34,14 @@ export interface UseLiveSessionOptions {
   kind: 'PERSONAL_LISTEN' | 'PERSONAL_DISCUSS';
   readingLanguage: string;
   slots?: Array<{ position: number; readingLanguage: string; rotation: 0 | 90 | 180 | 270 }>;
-  /** Mock mode drives the transcript from fixtures with no microphone at all. */
-  simulate?: boolean;
+  /**
+   * Whether the microphone opens as soon as the session connects.
+   *
+   * Listen says yes: nobody is holding a button. Discuss says no — it is
+   * push-to-talk, and a tile that started capturing on load would be recording
+   * the room before anyone chose to speak.
+   */
+  autoStartAudio?: boolean;
   spokenLanguage?: string;
 }
 
@@ -58,7 +70,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
 
   const storeRef = useRef(new TranscriptStore());
   const clientRef = useRef<SessionClient | null>(null);
-  const transportRef = useRef<MockTranscriptionTransport | null>(null);
+  const transportRef = useRef<RealtimeTranscriptionTransport | null>(null);
   const startedAtRef = useRef<number | null>(null);
   const activeSlotRef = useRef<string | null>(null);
 
@@ -184,12 +196,31 @@ export function useLiveSession(options: UseLiveSessionOptions) {
 
       startedAtRef.current = Date.now();
 
-      // The transport is chosen by the server. In mock mode it is an
-      // in-process fixture, so the entire experience runs with no provider
-      // account and no microphone permission prompt.
-      const transport = new MockTranscriptionTransport({
-        language: options.spokenLanguage === 'auto' ? undefined : options.spokenLanguage,
-        loop: true,
+      // The transport is chosen by the server, from whether a provider is
+      // configured. In mock mode it is an in-process fixture, so the entire
+      // experience runs with no provider account and no microphone prompt —
+      // which is what the test suite and the offline demo rely on.
+      //
+      // The client does not decide this and must not: a build that guessed
+      // would either ask for the microphone when there is nothing to send it
+      // to, or play scripted speech on a deployment paying for a real one.
+      const transport: RealtimeTranscriptionTransport =
+        tokenResponse.config.transport === 'mock'
+          ? new MockTranscriptionTransport({
+              language: options.spokenLanguage === 'auto' ? undefined : options.spokenLanguage,
+              loop: true,
+            })
+          : new WebRtcTranscriptionTransport(createBrowserTransportDependencies());
+
+      transport.onError((transportError) => {
+        setErrorCode(transportError.code);
+        setErrorReference(transportError.code);
+        dispatch({
+          type: 'ERROR',
+          code: transportError.code,
+          message: transportError.message,
+          retryable: transportError.retryable,
+        });
       });
       transportRef.current = transport;
 
@@ -213,7 +244,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
 
       await transport.connect(tokenResponse.config as TranscriptionConfig);
 
-      if (options.simulate !== false) {
+      if (options.autoStartAudio !== false) {
         await transport.startAudio();
         dispatch({ type: 'AUDIO_STARTED' });
       }
@@ -228,7 +259,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
     handleServerEvent,
     options.kind,
     options.readingLanguage,
-    options.simulate,
+    options.autoStartAudio,
     options.slots,
     options.spokenLanguage,
   ]);

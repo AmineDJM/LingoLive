@@ -198,6 +198,14 @@ export const transcriptionConfigSchema = z.object({
   model: z.string(),
   /** WebRTC offer/answer endpoint or WebSocket URL, depending on transport. */
   endpoint: z.string(),
+  /**
+   * Exact URL the client POSTs its SDP offer to.
+   *
+   * Built by the server rather than assembled in the browser: if the provider
+   * moves it, that is an environment variable on one service, not a release of
+   * two client applications.
+   */
+  sdpUrl: z.string(),
   transport: z.enum(['webrtc', 'websocket', 'mock']),
   audio: z.object({
     sampleRateHz: z.number().int(),

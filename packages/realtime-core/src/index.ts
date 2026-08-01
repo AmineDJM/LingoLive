@@ -9,5 +9,6 @@ export * from './state-machine.js';
 export * from './transcript-store.js';
 export * from './session-client.js';
 export * from './mock-transport.js';
+export * from './webrtc-transport.js';
 export * from './discussion.js';
 export * from './deep-links.js';

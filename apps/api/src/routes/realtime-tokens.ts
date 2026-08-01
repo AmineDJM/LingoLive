@@ -115,6 +115,7 @@ export async function registerRealtimeTokenRoutes(
           expiresAt: credential.expiresAt.toISOString(),
           model: credential.model,
           endpoint: credential.endpoint,
+          sdpUrl: sdpUrlFor(context, credential.model),
           transport: credential.transport,
           audio: audioProfileFor(credential.transport),
           vad: vadProfileFor(session.kind),
@@ -170,6 +171,18 @@ export async function registerRealtimeTokenRoutes(
       targetLanguages: body.targetLanguages,
     };
   });
+}
+
+/**
+ * Where a client POSTs its SDP offer to open the audio connection.
+ *
+ * Assembled here, not in the browser: both clients then agree by construction,
+ * and a provider URL change is one environment variable rather than a release
+ * of an iOS app, an Android app and a web app.
+ */
+function sdpUrlFor(context: AppContext, model: string): string {
+  const base = `${context.env.OPENAI_REALTIME_URL}${context.env.OPENAI_REALTIME_SDP_PATH}`;
+  return `${base}?model=${encodeURIComponent(model)}`;
 }
 
 function realtimeUrl(context: AppContext): string {

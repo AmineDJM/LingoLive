@@ -149,29 +149,64 @@ interface RealtimeTranscriptionTransport {
 }
 ```
 
-One implementation exists today:
-
 - **Mock** — plays fixtures. No microphone, no network, no account. This is what
-  makes the whole product demonstrable and testable offline.
+  makes the whole product demonstrable and testable offline, and what the E2E
+  suite runs against.
+- **WebRTC** (`realtime-core/webrtc-transport.ts`) — the real one. A microphone,
+  a peer connection to the provider, and the ephemeral credential the API
+  minted.
+- **Mobile** — not built. `apps/mobile` still constructs the mock
+  unconditionally; the native app needs a WebRTC module, which is a native
+  dependency and an EAS build, not a code change. See ADR-0004.
 
-Two are specified and **not yet built**:
+The server chooses, and the client obeys: `config.transport` comes back as
+`mock` when no provider is configured and `webrtc` when one is. A client that
+guessed would either ask for the microphone with nothing to send it to, or play
+scripted speech on a deployment paying for a real provider.
 
-- **Web** — `getUserMedia` plus WebRTC to the provider, using the ephemeral
-  credential the API minted.
-- **Mobile** — the same shape over the native audio module. See ADR-0004 for why
-  the mobile transport is what it is.
+### How the WebRTC transport is built
 
-> **This is the gap between the demo and the product.** `use-live-session.ts`
-> and `use-session.ts` both construct `MockTranscriptionTransport`
-> unconditionally, so a deployment with a real provider key mints a real
-> credential, never uses it, and plays scripted fixtures. Every surface around
-> it — tokens, quotas, the hub, fan-out, persistence, save and delete — runs for
-> real; the microphone does not. Nothing in the product says so, which is worse
-> than the gap itself.
+Every browser API it touches is injected as a small structural interface, so
+`realtime-core` keeps its no-DOM rule and the whole protocol is tested without a
+browser or an account. `apps/web/lib/browser-audio.ts` is the adapter over
+`RTCPeerConnection`, `getUserMedia` and `fetch`, and is the only file that names
+them.
 
-The server already chooses which transport a client should use and returns it as
-`config.transport` in the token response, so switching providers or transports
-stays a server-side decision. No client reads that field yet.
+```
+connect()  ── requestMicrophone ──►  permission prompt, tracks start MUTED
+           ── attachMicrophone  ──►  peer connection
+           ── createDataChannel ──►  'oai-events'   (before the offer, or it is
+           ── createOffer       ──►                  not negotiated into the SDP)
+           ── exchangeSdp       ──►  POST config.sdpUrl, Bearer <ephemeral>
+           ◄─ answer SDP        ──   setRemoteDescription
+startAudio()                    ──►  tracks unmuted. Nothing before this point
+                                     captures anything.
+```
+
+`config.sdpUrl` is built by the server from `OPENAI_REALTIME_URL` +
+`OPENAI_REALTIME_SDP_PATH`, so a provider URL change is one environment variable
+rather than a release of a web app, an iOS app and an Android app.
+
+Two properties the tests pin, because neither is visible by looking:
+
+- **The microphone is muted until `startAudio()`.** Connecting has to ask for
+  permission — the offer needs a track — but it must not capture. Push-to-talk
+  in Discuss is the same mechanism.
+- **`disconnect()` stops the tracks**, not just the peer connection. Closing the
+  connection alone leaves the browser's recording indicator lit, which is
+  indistinguishable from an app still listening to the room.
+
+Deltas are accumulated per provider `item_id` and cleared by that item's final,
+so two overlapping utterances cannot be spliced into one line. An event that is
+malformed or unrecognised is ignored rather than thrown: one bad frame must not
+end a session that is otherwise working.
+
+### CSP
+
+`connect-src` must name the provider origin. The SDP exchange is an ordinary
+`fetch`, and it is one of exactly two connections this server cannot proxy — the
+other being the realtime WebSocket to the hub. `REALTIME_PROVIDER_ORIGIN`
+defaults to `https://api.openai.com`.
 
 ## Minting the provider credential
 

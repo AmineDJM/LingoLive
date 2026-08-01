@@ -121,6 +121,16 @@ export const serverEnvSchema = z
      * fixable in the dashboard without a deploy.
      */
     OPENAI_REALTIME_SESSION_PATH: z.string().default('/client_secrets'),
+    /**
+     * Path appended to OPENAI_REALTIME_URL where a browser POSTs its SDP offer
+     * to open the audio connection.
+     *
+     * Same reasoning as the session path, and the same failure: a wrong value
+     * is a 404 the moment someone presses Listen. The server hands the finished
+     * URL to the client, so correcting it here fixes web and mobile at once,
+     * without releasing either.
+     */
+    OPENAI_REALTIME_SDP_PATH: z.string().default('/calls'),
     REALTIME_TOKEN_TTL_SECONDS: intFromEnv(60, 10, 600),
 
     AUTH_PROVIDER: z.enum(['local', 'oidc']).default('local'),

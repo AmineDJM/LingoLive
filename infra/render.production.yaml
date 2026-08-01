@@ -131,6 +131,10 @@ services:
         value: '60'
       - key: OPENAI_REALTIME_SESSION_PATH
         value: /client_secrets
+      # Where the browser POSTs its SDP offer to open the microphone
+      # connection. See infra/render.yaml for what to try if it 404s.
+      - key: OPENAI_REALTIME_SDP_PATH
+        value: /calls
       - key: GUEST_MINUTES_PER_MONTH
         value: '30'
       - key: FREE_MINUTES_PER_MONTH
