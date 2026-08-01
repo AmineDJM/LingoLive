@@ -188,6 +188,82 @@ describe('OpenAI transcription credential request', () => {
   });
 });
 
+describe('when the provider rejects the audio tuning', () => {
+  /** Answers 400 to the first call and 200 to the second. */
+  function pickyFetch(): { bodies: SentBody[]; fetchFn: typeof fetch } {
+    const bodies: SentBody[] = [];
+    const fetchFn = (async (_url: string | URL, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body ?? '{}')) as SentBody);
+      if (bodies.length === 1) {
+        return new Response(
+          JSON.stringify({
+            error: {
+              message: 'Invalid value for turn_detection.type',
+              type: 'invalid_request_error',
+              code: 'invalid_value',
+              param: 'session.audio.input.turn_detection.type',
+            },
+          }),
+          { status: 400, headers: { 'content-type': 'application/json' } },
+        );
+      }
+      return new Response(JSON.stringify({ value: 'ek_secret' }), { status: 200 });
+    }) as unknown as typeof fetch;
+    return { bodies, fetchFn };
+  }
+
+  it('retries without the tuning rather than failing the session', async () => {
+    // Listening on the provider's defaults is worse than listening on ours.
+    // It is far better than not listening at all, which is what a hard failure
+    // here means to someone who just pressed Listen.
+    const { bodies, fetchFn } = pickyFetch();
+    const credential = await providerFor(fetchFn).createEphemeralCredential(baseRequest);
+
+    expect(credential.clientSecret).toBe('ek_secret');
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0]?.session?.audio?.input?.turn_detection).toBeDefined();
+    expect(bodies[1]?.session?.audio?.input?.turn_detection).toBeUndefined();
+    expect(bodies[1]?.session?.audio?.input?.noise_reduction).toBeUndefined();
+  });
+
+  it('keeps the model and language on the retry — only the tuning is dropped', async () => {
+    const { bodies, fetchFn } = pickyFetch();
+    await providerFor(fetchFn).createEphemeralCredential({ ...baseRequest, spokenLanguage: 'fr' });
+
+    const retried = bodies[1]?.session?.audio?.input?.transcription;
+    expect(retried?.model).toBe('gpt-live-transcribe');
+    expect(retried?.language).toBe('fr');
+  });
+
+  it('does not retry a rejected key, which no retry can fix', async () => {
+    let calls = 0;
+    const fetchFn = (async () => {
+      calls += 1;
+      return new Response(JSON.stringify({ error: { code: 'invalid_api_key' } }), { status: 401 });
+    }) as unknown as typeof fetch;
+
+    await providerFor(fetchFn)
+      .createEphemeralCredential(baseRequest)
+      .catch(() => undefined);
+    expect(calls).toBe(1);
+  });
+
+  it('reports the second failure when the retry fails too', async () => {
+    const fetchFn = (async () =>
+      new Response(JSON.stringify({ error: { code: 'model_not_found' } }), {
+        status: 400,
+        headers: { 'content-type': 'application/json' },
+      })) as unknown as typeof fetch;
+
+    const error = await providerFor(fetchFn)
+      .createEphemeralCredential(baseRequest)
+      .catch((caught: unknown) => caught);
+
+    expect((error as LingoLiveError).code).toBe('AI_PROVIDER_UNAVAILABLE');
+    expect((error as LingoLiveError).details?.providerCode).toBe('model_not_found');
+  });
+});
+
 describe('OpenAI transcription failures', () => {
   function rejectingFetch(status: number, payload: unknown): typeof fetch {
     return (async () =>

@@ -122,6 +122,11 @@ export function errorReference(error: unknown, code: string): string {
   const providerCode = details?.['providerCode'] ?? details?.['providerType'];
   if (typeof providerCode === 'string' && providerCode) parts.push(providerCode);
 
+  // Which field was rejected. `invalid_value` says a parameter is wrong;
+  // `param` says which one, and without it the two are equally undiagnosable.
+  const providerParam = details?.['providerParam'];
+  if (typeof providerParam === 'string' && providerParam) parts.push(providerParam);
+
   // Only ever set by a transport whose request carried no user content. The
   // API deliberately does not send this back; see the note in the provider.
   const providerMessage = details?.['providerMessage'];

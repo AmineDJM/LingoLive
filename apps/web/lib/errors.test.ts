@@ -85,6 +85,20 @@ describe('errorReference', () => {
     );
   });
 
+  it('names the rejected parameter, without which "invalid_value" says nothing', () => {
+    const error = {
+      details: {
+        providerStatus: 400,
+        providerCode: 'invalid_value',
+        providerParam: 'session.audio.input.turn_detection.type',
+        requestId: 'req_7170935a',
+      },
+    };
+    expect(errorReference(error, 'AI_PROVIDER_UNAVAILABLE')).toBe(
+      'AI_PROVIDER_UNAVAILABLE · 400 · invalid_value · session.audio.input.turn_detection.type · req_7170935a',
+    );
+  });
+
   it('degrades to the bare code when there are no details at all', () => {
     expect(errorReference(new Error('boom'), 'INTERNAL_ERROR')).toBe('INTERNAL_ERROR');
     expect(errorReference(undefined, 'INTERNAL_ERROR')).toBe('INTERNAL_ERROR');

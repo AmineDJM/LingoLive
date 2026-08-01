@@ -53,18 +53,36 @@ export class OpenAiTranscriptionProvider implements TranscriptionProvider {
 
     let response: Response;
     try {
-      response = await this.fetchFn(
-        `${this.env.OPENAI_REALTIME_URL}${this.env.OPENAI_REALTIME_SESSION_PATH}`,
-        {
-          method: 'POST',
-          headers: {
-            authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
-            'content-type': 'application/json',
+      response = await this.post(this.sessionRequestBody(model, request));
+
+      /**
+       * The tuning is an optimisation, not a requirement.
+       *
+       * `turn_detection` and `noise_reduction` are what make the transcript
+       * keep up and hear a distant speaker, but which of them a given model
+       * accepts is not something this code can know — and a provider that
+       * rejects one currently takes the whole session down with it. Listening
+       * with default settings is worse than listening with tuned ones; it is
+       * far better than not listening at all.
+       *
+       * So a 400 is retried once without them, loudly. The log names the exact
+       * parameter, which is the thing needed to stop doing this permanently.
+       */
+      if (response.status === 400) {
+        const failure = await describeProviderFailure(response);
+        this.logger.warn(
+          {
+            sessionId: request.sessionId,
+            provider: 'openai',
+            model,
+            ...failure,
+            providerMessage: scrubForLog(failure.providerMessage),
           },
-          body: JSON.stringify(this.sessionRequestBody(model, request)),
-          signal: AbortSignal.timeout(10_000),
-        },
-      );
+          'Provider rejected the audio tuning; retrying with its defaults. ' +
+            'Latency and accuracy will be worse until the parameter above is corrected.',
+        );
+        response = await this.post(this.sessionRequestBody(model, request, { omitTuning: true }));
+      }
     } catch (error) {
       // Never log the key, the URL query or the response body.
       this.logger.error(
@@ -146,6 +164,19 @@ export class OpenAiTranscriptionProvider implements TranscriptionProvider {
     };
   }
 
+  /** One credential request. Separate so the tuning fallback can repeat it. */
+  private post(body: Record<string, unknown>): Promise<Response> {
+    return this.fetchFn(`${this.env.OPENAI_REALTIME_URL}${this.env.OPENAI_REALTIME_SESSION_PATH}`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${this.env.OPENAI_API_KEY ?? ''}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
+    });
+  }
+
   /**
    * The body that mints an ephemeral transcription credential.
    *
@@ -159,10 +190,15 @@ export class OpenAiTranscriptionProvider implements TranscriptionProvider {
    * `transcription` object. They were previously sent one level too high, at
    * `audio.input`, which the API rejects as an unknown parameter — a 400 that
    * reached the user as an unexplained error on the first tap of Listen.
+   *
+   * `omitTuning` drops the turn detection and noise reduction, leaving only
+   * what is required to transcribe at all. It is what the retry uses when the
+   * provider refuses one of them.
    */
   private sessionRequestBody(
     model: string,
     request: TranscriptionCredentialRequest,
+    options: { omitTuning?: boolean } = {},
   ): Record<string, unknown> {
     const transcription = {
       model,
@@ -181,17 +217,21 @@ export class OpenAiTranscriptionProvider implements TranscriptionProvider {
      * seconds after the speaker has stopped — which reads as the product being
      * slow, not as a parameter being absent.
      */
-    const turnDetection = {
-      type: 'server_vad',
-      threshold: request.vad.threshold,
-      prefix_padding_ms: request.vad.prefixPaddingMs,
-      silence_duration_ms: request.vad.silenceMs,
-    };
+    const turnDetection = options.omitTuning
+      ? undefined
+      : {
+          type: 'server_vad',
+          threshold: request.vad.threshold,
+          prefix_padding_ms: request.vad.prefixPaddingMs,
+          silence_duration_ms: request.vad.silenceMs,
+        };
 
     // `none` means "send no object at all" rather than a type the API does not
     // define.
     const noiseReduction =
-      request.noiseReduction === 'none' ? undefined : { type: request.noiseReduction };
+      options.omitTuning || request.noiseReduction === 'none'
+        ? undefined
+        : { type: request.noiseReduction };
 
     if (this.env.OPENAI_REALTIME_SESSION_PATH.includes('transcription_sessions')) {
       return {
