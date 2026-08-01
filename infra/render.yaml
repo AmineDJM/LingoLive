@@ -167,10 +167,14 @@ services:
       - key: OPENAI_REALTIME_SESSION_PATH
         value: /client_secrets
       # Where the browser POSTs its SDP offer to open the microphone
-      # connection. The server hands the finished URL to the client, so if the
-      # provider moves it this one value fixes web and mobile at once. If
-      # pressing Listen fails with a 404 from the provider, try an empty value
-      # (the offer then goes to OPENAI_REALTIME_URL itself).
+      # connection, used verbatim. The server hands the finished URL to the
+      # client, so if the provider moves it this one value fixes web and mobile
+      # at once. If pressing Listen fails with a 404, try an empty value (the
+      # offer then goes to OPENAI_REALTIME_URL itself).
+      #
+      # Do NOT add `?model=`. The model comes from the ephemeral session; here
+      # the parameter selects a conversation model, and a transcription model
+      # is rejected with `400 invalid_model`.
       - key: OPENAI_REALTIME_SDP_PATH
         value: /calls
       # --- Quotas & cost ----------------------------------------------------

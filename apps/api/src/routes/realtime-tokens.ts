@@ -115,7 +115,7 @@ export async function registerRealtimeTokenRoutes(
           expiresAt: credential.expiresAt.toISOString(),
           model: credential.model,
           endpoint: credential.endpoint,
-          sdpUrl: sdpUrlFor(context, credential.model),
+          sdpUrl: sdpUrlFor(context),
           transport: credential.transport,
           audio: audioProfileFor(credential.transport),
           vad: vadProfileFor(session.kind),
@@ -180,15 +180,21 @@ export async function registerRealtimeTokenRoutes(
  * and a provider URL change is one environment variable rather than a release
  * of an iOS app, an Android app and a web app.
  */
-function sdpUrlFor(context: AppContext, model: string): string {
-  const path = context.env.OPENAI_REALTIME_SDP_PATH;
-  const base = `${context.env.OPENAI_REALTIME_URL}${path}`;
-  // A path that already carries a query is taken verbatim. The model is bound
-  // to the ephemeral credential the session was created with, so whether it
-  // must ALSO appear in the URL depends on which entry point is in use — and
-  // that is exactly the kind of thing an operator needs to be able to correct
-  // without waiting for a release.
-  return path.includes('?') ? base : `${base}?model=${encodeURIComponent(model)}`;
+function sdpUrlFor(context: AppContext): string {
+  // Taken verbatim, query string and all.
+  //
+  // This used to append `?model=`, which the provider rejected:
+  //
+  //   400 invalid_model — Model "…" is not supported in transcription mode
+  //
+  // The model belongs to the session, chosen when the ephemeral credential was
+  // minted, and the credential is what identifies the call. Naming it again in
+  // the URL is not just redundant: on this endpoint the query parameter selects
+  // a conversation model, which is a different set from the transcription ones,
+  // so a perfectly valid transcription model is rejected there.
+  //
+  // An operator who needs a query can write one into the path.
+  return `${context.env.OPENAI_REALTIME_URL}${context.env.OPENAI_REALTIME_SDP_PATH}`;
 }
 
 function realtimeUrl(context: AppContext): string {

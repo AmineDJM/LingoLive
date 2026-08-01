@@ -131,6 +131,40 @@ async function createListenSession(): Promise<{
   };
 }
 
+describe('the transcription credential', () => {
+  it('does not name the model in the SDP URL', async () => {
+    // The model belongs to the ephemeral session. Repeating it in the URL made
+    // the provider answer 400 invalid_model — on that endpoint the query
+    // parameter picks a CONVERSATION model, so a valid transcription model is
+    // rejected there. The failure only appeared at the audio handshake, in the
+    // browser, long after the credential had been minted successfully.
+    const guest = await registerGuest(harness.app);
+    const session = await harness.app.inject({
+      method: 'POST',
+      url: '/api/v1/sessions',
+      headers: authHeaders(guest.token),
+      payload: { kind: 'PERSONAL_LISTEN', readingLanguage: 'fr' },
+    });
+
+    const response = await harness.app.inject({
+      method: 'POST',
+      url: '/api/v1/realtime/transcription-token',
+      headers: authHeaders(guest.token),
+      payload: {
+        sessionId: session.json().session.id,
+        platform: 'web',
+        preferredTransport: 'auto',
+        spokenLanguage: 'auto',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const { sdpUrl } = response.json().config;
+    expect(sdpUrl).not.toContain('model=');
+    expect(sdpUrl).toContain('/realtime');
+  });
+});
+
 describe('realtime session', () => {
   it('sends a snapshot on join and streams partial then final text', async () => {
     const { realtimeToken } = await createListenSession();
