@@ -181,8 +181,14 @@ export async function registerRealtimeTokenRoutes(
  * of an iOS app, an Android app and a web app.
  */
 function sdpUrlFor(context: AppContext, model: string): string {
-  const base = `${context.env.OPENAI_REALTIME_URL}${context.env.OPENAI_REALTIME_SDP_PATH}`;
-  return `${base}?model=${encodeURIComponent(model)}`;
+  const path = context.env.OPENAI_REALTIME_SDP_PATH;
+  const base = `${context.env.OPENAI_REALTIME_URL}${path}`;
+  // A path that already carries a query is taken verbatim. The model is bound
+  // to the ephemeral credential the session was created with, so whether it
+  // must ALSO appear in the URL depends on which entry point is in use — and
+  // that is exactly the kind of thing an operator needs to be able to correct
+  // without waiting for a release.
+  return path.includes('?') ? base : `${base}?model=${encodeURIComponent(model)}`;
 }
 
 function realtimeUrl(context: AppContext): string {

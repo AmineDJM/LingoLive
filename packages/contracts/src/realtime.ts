@@ -250,6 +250,16 @@ export interface RealtimeTransportError {
   readonly code: string;
   readonly message: string;
   readonly retryable: boolean;
+  /**
+   * Identifying detail safe to show next to the code — an upstream status, the
+   * provider's own error code.
+   *
+   * A transport failure happens in the browser and leaves no server log line,
+   * so if this is empty there is nothing anywhere to diagnose it from. That is
+   * not hypothetical: `SDP_EXCHANGE_FAILED` alone cannot distinguish a wrong
+   * URL from a rejected parameter, and both look like "an error occurred".
+   */
+  readonly details?: Record<string, unknown> | undefined;
 }
 
 /**

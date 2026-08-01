@@ -150,6 +150,36 @@ export function parseProviderEvent(raw: unknown): ParsedProviderEvent {
   return { kind: 'ignored' };
 }
 
+/**
+ * Turns a refused SDP exchange into something reportable.
+ *
+ * The provider's own message is included here, unlike on the server side. The
+ * request that produced it carries only a session description — no transcript,
+ * no vocabulary hint, nothing anyone said — so there is nothing in the reply to
+ * leak, and "Unknown parameter: 'model'" is the entire diagnosis.
+ */
+export function describeSdpFailure(answer: {
+  status: number;
+  body: string;
+}): Record<string, unknown> {
+  const details: Record<string, unknown> = { providerStatus: answer.status };
+  try {
+    const parsed: unknown = JSON.parse(answer.body);
+    const error = (parsed as { error?: Record<string, unknown> })?.error;
+    if (typeof error?.['code'] === 'string') details['providerCode'] = error['code'];
+    else if (typeof error?.['type'] === 'string') details['providerCode'] = error['type'];
+    if (typeof error?.['message'] === 'string') {
+      // Truncated: this lands in a one-line reference under the message, not
+      // in a log.
+      details['providerMessage'] = error['message'].slice(0, 160);
+    }
+  } catch {
+    // A non-JSON body — a gateway's HTML, or an empty 404. The status stands
+    // on its own and must not be lost to a parse failure.
+  }
+  return details;
+}
+
 export class WebRtcTranscriptionTransport implements RealtimeTranscriptionTransport {
   private state: RealtimeState = 'idle';
   private config: TranscriptionConfig | null = null;
@@ -228,10 +258,15 @@ export class WebRtcTranscriptionTransport implements RealtimeTranscriptionTransp
       // The status is the diagnostic. 401 means the ephemeral credential was
       // rejected or had already expired; 404 means the exchange URL is wrong,
       // which is why the server builds it from configuration.
+      //
+      // The reason travels with the error. This exchange happens in the browser
+      // and leaves nothing in any server log, so a bare code here is the end of
+      // the trail for whoever has to fix it.
       throw this.fail(
         answer.status === 401 ? 'REALTIME_CREDENTIAL_REJECTED' : 'SDP_EXCHANGE_FAILED',
         `The transcription provider refused the connection (${answer.status})`,
         answer.status >= 500,
+        describeSdpFailure(answer),
       );
     }
 
@@ -363,9 +398,16 @@ export class WebRtcTranscriptionTransport implements RealtimeTranscriptionTransp
   }
 
   /** Builds an error, announces it, and returns it to be thrown. */
-  private fail(code: string, message: string, retryable: boolean): Error {
+  private fail(
+    code: string,
+    message: string,
+    retryable: boolean,
+    details?: Record<string, unknown>,
+  ): Error {
     this.setState('error');
-    this.emitError({ code, message, retryable });
-    return Object.assign(new Error(message), { code });
+    this.emitError({ code, message, retryable, ...(details ? { details } : {}) });
+    // `details` is attached to the thrown error under the same name the API
+    // client uses, so one display path renders both without special-casing.
+    return Object.assign(new Error(message), { code, ...(details ? { details } : {}) });
   }
 }

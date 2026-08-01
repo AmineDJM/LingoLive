@@ -112,8 +112,20 @@ export function errorReference(error: unknown, code: string): string {
   //
   // Safe to display: these are the provider's vocabulary, not its prose. The
   // message, which can quote what the user typed, is deliberately not sent.
+  // The upstream HTTP status. For a failure that happens in the browser — the
+  // SDP exchange with the provider — there is no server log line at all, so
+  // this is the only thing separating a wrong URL (404) from a rejected
+  // parameter (400) from an expired credential (401).
+  const providerStatus = details?.['providerStatus'];
+  if (typeof providerStatus === 'number') parts.push(String(providerStatus));
+
   const providerCode = details?.['providerCode'] ?? details?.['providerType'];
   if (typeof providerCode === 'string' && providerCode) parts.push(providerCode);
+
+  // Only ever set by a transport whose request carried no user content. The
+  // API deliberately does not send this back; see the note in the provider.
+  const providerMessage = details?.['providerMessage'];
+  if (typeof providerMessage === 'string' && providerMessage) parts.push(providerMessage);
 
   const requestId = details?.['requestId'];
   if (typeof requestId === 'string' && requestId) parts.push(requestId);

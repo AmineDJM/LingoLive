@@ -160,6 +160,36 @@ describe('connecting', () => {
     expect((transient as { code?: string }).code).toBe('SDP_EXCHANGE_FAILED');
   });
 
+  it('carries the upstream status and reason, which are the whole diagnosis', async () => {
+    // This exchange happens in the browser and leaves no server log line. A
+    // bare SDP_EXCHANGE_FAILED cannot tell a wrong URL from a rejected
+    // parameter, and both read as "an error occurred".
+    const h = harness({
+      ok: false,
+      status: 400,
+      body: JSON.stringify({
+        error: { message: "Unknown parameter: 'model'.", type: 'invalid_request_error' },
+      }),
+    });
+    const error = await new WebRtcTranscriptionTransport(h.deps)
+      .connect(config)
+      .catch((caught: unknown) => caught);
+
+    const details = (error as { details?: Record<string, unknown> }).details;
+    expect(details?.['providerStatus']).toBe(400);
+    expect(details?.['providerCode']).toBe('invalid_request_error');
+    expect(details?.['providerMessage']).toBe("Unknown parameter: 'model'.");
+  });
+
+  it('still reports the status when the refusal is not JSON', async () => {
+    const h = harness({ ok: false, status: 404, body: '<html>Not Found</html>' });
+    const error = await new WebRtcTranscriptionTransport(h.deps)
+      .connect(config)
+      .catch((caught: unknown) => caught);
+
+    expect((error as { details?: Record<string, unknown> }).details?.['providerStatus']).toBe(404);
+  });
+
   it('announces a failed exchange to error handlers, not only to the caller', async () => {
     const h = harness({ ok: false, status: 404, body: 'no such route' });
     const transport = new WebRtcTranscriptionTransport(h.deps);

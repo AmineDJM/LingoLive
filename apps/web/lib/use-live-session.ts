@@ -226,7 +226,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
 
       transport.onError((transportError) => {
         setErrorCode(transportError.code);
-        setErrorReference(transportError.code);
+        setErrorReference(referenceFor(transportError, transportError.code));
         dispatch({
           type: 'ERROR',
           code: transportError.code,

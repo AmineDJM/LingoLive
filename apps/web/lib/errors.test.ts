@@ -69,22 +69,50 @@ describe('errorReference', () => {
     );
   });
 
+  it('shows the upstream status, code and reason for a browser-side failure', () => {
+    // The SDP exchange never touches our server, so this reference line is the
+    // only record that exists anywhere.
+    const error = {
+      code: 'SDP_EXCHANGE_FAILED',
+      details: {
+        providerStatus: 400,
+        providerCode: 'invalid_request_error',
+        providerMessage: "Unknown parameter: 'model'.",
+      },
+    };
+    expect(errorReference(error, 'SDP_EXCHANGE_FAILED')).toBe(
+      "SDP_EXCHANGE_FAILED · 400 · invalid_request_error · Unknown parameter: 'model'.",
+    );
+  });
+
   it('degrades to the bare code when there are no details at all', () => {
     expect(errorReference(new Error('boom'), 'INTERNAL_ERROR')).toBe('INTERNAL_ERROR');
     expect(errorReference(undefined, 'INTERNAL_ERROR')).toBe('INTERNAL_ERROR');
   });
 
-  it('never displays the provider message, which can quote what was typed', () => {
-    // The API does not send it. This asserts the display side would not show
-    // it even if a future change started including it.
-    const error = {
-      details: {
-        providerCode: 'invalid_prompt',
-        providerMessage: 'Invalid prompt: "Dr Amina Haddad"',
-        requestId: 'req_1',
-      },
+  it('shows a provider message only because none that reaches here can quote a user', () => {
+    // Two sources, one display, and the safety lives at the source rather than
+    // here — so this test records WHICH source is allowed to set the field.
+    //
+    //  - The API mints the credential with the user's vocabulary hints in the
+    //    request, so a provider message can echo them back. It therefore never
+    //    returns one; `openai-provider.test.ts` asserts that, and it is the
+    //    guarantee this display depends on.
+    //  - The browser's SDP exchange sends a session description and nothing
+    //    else. There is no user content in the request, so none in the reply.
+    //
+    // If a future change makes the API send `providerMessage`, that test fails
+    // first — which is the right place to catch it, because by the time it
+    // arrives here the content is already out of the server.
+    const fromTransport = {
+      details: { providerStatus: 404, providerMessage: 'Unknown request URL.' },
     };
-    expect(errorReference(error, 'AI_PROVIDER_UNAVAILABLE')).not.toContain('Amina');
+    expect(errorReference(fromTransport, 'SDP_EXCHANGE_FAILED')).toContain('Unknown request URL.');
+
+    const fromApi = { details: { providerCode: 'model_not_found', requestId: 'req_1' } };
+    expect(errorReference(fromApi, 'AI_PROVIDER_UNAVAILABLE')).toBe(
+      'AI_PROVIDER_UNAVAILABLE · model_not_found · req_1',
+    );
   });
 });
 
