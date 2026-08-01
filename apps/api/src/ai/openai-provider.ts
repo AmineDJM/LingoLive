@@ -173,13 +173,46 @@ export class OpenAiTranscriptionProvider implements TranscriptionProvider {
       prompt: request.vocabularyHints.length > 0 ? request.vocabularyHints.join(', ') : undefined,
     };
 
+    /**
+     * When a turn ends, and therefore when text is allowed to settle.
+     *
+     * This is the single biggest lever on perceived latency. Left unsent, the
+     * provider applies its own defaults and a sentence can hang unfinished for
+     * seconds after the speaker has stopped — which reads as the product being
+     * slow, not as a parameter being absent.
+     */
+    const turnDetection = {
+      type: 'server_vad',
+      threshold: request.vad.threshold,
+      prefix_padding_ms: request.vad.prefixPaddingMs,
+      silence_duration_ms: request.vad.silenceMs,
+    };
+
+    // `none` means "send no object at all" rather than a type the API does not
+    // define.
+    const noiseReduction =
+      request.noiseReduction === 'none' ? undefined : { type: request.noiseReduction };
+
     if (this.env.OPENAI_REALTIME_SESSION_PATH.includes('transcription_sessions')) {
-      return { input_audio_transcription: transcription };
+      return {
+        input_audio_transcription: transcription,
+        turn_detection: turnDetection,
+        input_audio_noise_reduction: noiseReduction,
+      };
     }
 
     return {
       expires_after: { anchor: 'created_at', seconds: request.ttlSeconds },
-      session: { type: 'transcription', audio: { input: { transcription } } },
+      session: {
+        type: 'transcription',
+        audio: {
+          input: {
+            transcription,
+            turn_detection: turnDetection,
+            noise_reduction: noiseReduction,
+          },
+        },
+      },
     };
   }
 

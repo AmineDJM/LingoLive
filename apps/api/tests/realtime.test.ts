@@ -132,6 +132,50 @@ async function createListenSession(): Promise<{
 }
 
 describe('the transcription credential', () => {
+  it('treats a room and a table differently', async () => {
+    // Listen is a lecture or a meeting: voices metres away, quiet and
+    // reverberant. Discuss is people leaning over one device. Sending
+    // near-field settings for both — which is what happened — asks the
+    // provider to treat distant speech as background noise.
+    const guest = await registerGuest(harness.app);
+
+    async function profileFor(kind: 'PERSONAL_LISTEN' | 'PERSONAL_DISCUSS') {
+      const session = await harness.app.inject({
+        method: 'POST',
+        url: '/api/v1/sessions',
+        headers: authHeaders(guest.token),
+        payload: {
+          kind,
+          readingLanguage: 'fr',
+          ...(kind === 'PERSONAL_DISCUSS'
+            ? {
+                slots: [
+                  { position: 0, readingLanguage: 'fr', rotation: 0 },
+                  { position: 1, readingLanguage: 'en', rotation: 180 },
+                ],
+              }
+            : {}),
+        },
+      });
+      const response = await harness.app.inject({
+        method: 'POST',
+        url: '/api/v1/realtime/transcription-token',
+        headers: authHeaders(guest.token),
+        payload: {
+          sessionId: session.json().session.id,
+          platform: 'web',
+          preferredTransport: 'auto',
+          spokenLanguage: 'auto',
+        },
+      });
+      expect(response.statusCode).toBe(200);
+      return response.json().config;
+    }
+
+    expect((await profileFor('PERSONAL_LISTEN')).noiseReduction).toBe('far_field');
+    expect((await profileFor('PERSONAL_DISCUSS')).noiseReduction).toBe('near_field');
+  });
+
   it('does not name the model in the SDP URL', async () => {
     // The model belongs to the ephemeral session. Repeating it in the URL made
     // the provider answer 400 invalid_model — on that endpoint the query

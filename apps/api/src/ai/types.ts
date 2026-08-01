@@ -52,6 +52,22 @@ export interface TranscriptionCredentialRequest {
   readonly platform: string;
   readonly preferredTransport: 'webrtc' | 'websocket' | 'auto';
   readonly ttlSeconds: number;
+  /**
+   * How long a pause ends a turn, and how loud counts as speech.
+   *
+   * This governs perceived latency more than anything else in the product: a
+   * transcript is not settled until the provider decides the speaker stopped.
+   * These were computed per session kind and then not sent, so every session
+   * ran on the provider's defaults regardless.
+   */
+  readonly vad: {
+    readonly mode: 'server' | 'manual';
+    readonly silenceMs: number;
+    readonly threshold: number;
+    readonly prefixPaddingMs: number;
+  };
+  /** `far_field` for a room, `near_field` for a device on the table. */
+  readonly noiseReduction: 'none' | 'near_field' | 'far_field';
 }
 
 export interface TranscriptionProvider {

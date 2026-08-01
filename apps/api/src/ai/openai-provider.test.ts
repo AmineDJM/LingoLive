@@ -43,6 +43,8 @@ const baseRequest: TranscriptionCredentialRequest = {
   platform: 'web',
   preferredTransport: 'auto',
   ttlSeconds: 60,
+  vad: { mode: 'server', silenceMs: 600, threshold: 0.5, prefixPaddingMs: 300 },
+  noiseReduction: 'far_field',
 };
 
 /** The parameters this provider is allowed to send. Written out rather than
@@ -54,6 +56,13 @@ interface SentBody {
     audio?: {
       input?: {
         transcription?: { model?: string; language?: string; prompt?: string };
+        turn_detection?: {
+          type?: string;
+          threshold?: number;
+          prefix_padding_ms?: number;
+          silence_duration_ms?: number;
+        };
+        noise_reduction?: { type?: string };
         /** Only ever present if the old bug comes back. */
         model?: string;
       };
@@ -94,6 +103,37 @@ describe('OpenAI transcription credential request', () => {
     // The bug: these sat directly on `audio.input`, which the API rejects as
     // an unknown parameter.
     expect(input?.model).toBeUndefined();
+  });
+
+  it('sends the turn detection that decides when a sentence settles', async () => {
+    // Computed per session kind, returned to the client, and previously never
+    // sent — so every session ran on the provider's defaults and text hung
+    // unfinished for seconds after the speaker stopped. That reads as a slow
+    // product, not as a missing parameter.
+    const { calls, fetchFn } = recordingFetch();
+    await providerFor(fetchFn).createEphemeralCredential(baseRequest);
+
+    expect(calls[0]?.body.session?.audio?.input?.turn_detection).toEqual({
+      type: 'server_vad',
+      threshold: 0.5,
+      prefix_padding_ms: 300,
+      silence_duration_ms: 600,
+    });
+  });
+
+  it('tells the provider how far away the voices are', async () => {
+    const { calls, fetchFn } = recordingFetch();
+    await providerFor(fetchFn).createEphemeralCredential(baseRequest);
+    expect(calls[0]?.body.session?.audio?.input?.noise_reduction).toEqual({ type: 'far_field' });
+  });
+
+  it('omits noise reduction entirely rather than inventing a "none" type', async () => {
+    const { calls, fetchFn } = recordingFetch();
+    await providerFor(fetchFn).createEphemeralCredential({
+      ...baseRequest,
+      noiseReduction: 'none',
+    });
+    expect(calls[0]?.body.session?.audio?.input?.noise_reduction).toBeUndefined();
   });
 
   it('sends the TTL as expires_after so the credential cannot outlive the session', async () => {

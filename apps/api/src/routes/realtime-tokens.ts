@@ -64,6 +64,12 @@ export async function registerRealtimeTokenRoutes(
       }
 
       const ttl = context.runtimeConfig.number('REALTIME_TOKEN_TTL_SECONDS');
+      // Computed once and used twice: sent to the provider so it actually
+      // governs the stream, and returned to the client so it can set up its
+      // microphone to match. Returning it without sending it — which is what
+      // this did — left every session on the provider's defaults.
+      const vad = vadProfileFor(session.kind);
+      const noiseReduction = noiseProfileFor(session.kind);
       const credential = await context.ai.transcription.createEphemeralCredential({
         sessionId: body.sessionId,
         spokenLanguage: body.spokenLanguage,
@@ -71,6 +77,8 @@ export async function registerRealtimeTokenRoutes(
         platform: body.platform,
         preferredTransport: body.preferredTransport,
         ttlSeconds: ttl,
+        vad,
+        noiseReduction,
       });
 
       // The owner participates in their own session as OWNER.
@@ -118,10 +126,10 @@ export async function registerRealtimeTokenRoutes(
           sdpUrl: sdpUrlFor(context),
           transport: credential.transport,
           audio: audioProfileFor(credential.transport),
-          vad: vadProfileFor(session.kind),
+          vad,
           spokenLanguage: body.spokenLanguage,
           vocabularyHints: body.vocabularyHints,
-          noiseReduction: 'near_field',
+          noiseReduction,
         },
         realtimeToken,
         realtimeUrl: realtimeUrl(context),
@@ -224,6 +232,21 @@ function audioProfileFor(transport: string) {
  * when a turn has finished — with conservative thresholds, because these
  * conversations happen in bars, corridors and waiting rooms.
  */
+/**
+ * How far away the voices are.
+ *
+ * Listen is a room: a lecture, a meeting, a doctor two metres away. Those
+ * voices arrive quiet and reverberant, and processing tuned for someone
+ * speaking into their own phone treats them as background and attenuates
+ * exactly the speech we are trying to capture. This was hard-coded to
+ * `near_field` for both modes, which is the wrong half of the product.
+ *
+ * Discuss is people around one device on a table, which really is near field.
+ */
+function noiseProfileFor(kind: SessionKind): 'near_field' | 'far_field' {
+  return kind === SessionKind.PERSONAL_DISCUSS ? 'near_field' : 'far_field';
+}
+
 function vadProfileFor(kind: SessionKind) {
   if (kind === SessionKind.PERSONAL_DISCUSS) {
     return { mode: 'manual' as const, silenceMs: 900, threshold: 0.6, prefixPaddingMs: 300 };

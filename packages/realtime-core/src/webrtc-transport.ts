@@ -70,6 +70,8 @@ export interface WebRtcTransportDependencies {
   requestMicrophone(constraints: {
     sampleRateHz: number;
     channels: number;
+    /** Lets the capture match the distance the provider is expecting. */
+    noiseReduction: 'none' | 'near_field' | 'far_field';
   }): Promise<AudioStreamLike>;
   createPeerConnection(): PeerConnectionLike;
   /** Posts the SDP offer and resolves with the answer SDP. */
@@ -209,6 +211,7 @@ export class WebRtcTranscriptionTransport implements RealtimeTranscriptionTransp
     this.stream = await this.deps.requestMicrophone({
       sampleRateHz: config.audio.sampleRateHz,
       channels: config.audio.channels,
+      noiseReduction: config.noiseReduction,
     });
 
     // The microphone is live from this moment. It starts muted so that

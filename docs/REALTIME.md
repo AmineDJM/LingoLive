@@ -201,6 +201,32 @@ so two overlapping utterances cannot be spliced into one line. An event that is
 malformed or unrecognised is ignored rather than thrown: one bad frame must not
 end a session that is otherwise working.
 
+### Distance, and why it decides both latency and accuracy
+
+The server computes two profiles per session kind, sends them to the provider
+with the credential request, AND returns them to the client so its microphone
+matches. They were computed and returned but never sent, so every session ran on
+provider defaults — which is what "several seconds of latency and poor accuracy"
+turned out to be.
+
+|                                               | Listen (a room) | Discuss (a table) |
+| --------------------------------------------- | --------------- | ----------------- |
+| `turn_detection.silence_duration_ms`          | 600             | 900               |
+| `noise_reduction`                             | `far_field`     | `near_field`      |
+| Browser echo cancellation / noise suppression | **off**         | on                |
+
+`turn_detection` is the single biggest lever on perceived latency: a transcript
+is not settled until the provider decides the speaker stopped, so this is the
+pause the reader waits through on every sentence.
+
+The browser setting is the accuracy half, and it is counter-intuitive. Chrome's
+audio chain is built for a phone call — one near talker, everything else is
+noise to be removed. A lecturer three metres away is quiet and reverberant,
+which is precisely what that suppressor attenuates, so the speech we want is
+degraded before it leaves the machine and no provider-side setting recovers it.
+Echo cancellation has nothing to cancel either: this app plays no audio. Gain
+control stays on in both modes — it is what lifts a distant voice.
+
 ### CSP
 
 `connect-src` must name the provider origin. The SDP exchange is an ordinary

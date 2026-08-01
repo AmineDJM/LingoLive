@@ -15,20 +15,33 @@ import type {
  */
 
 /**
- * Audio constraints.
+ * Audio constraints, which differ by how far away the voices are.
  *
- * The browser's own processing is left ON. Speech recognition is trained on
- * ordinary microphone input, and these rooms — cafés, corridors, waiting rooms
- * — are exactly where echo cancellation and noise suppression earn their place.
- * Turning them off to "send the model cleaner audio" sends it noisier audio.
+ * The browser's processing chain is built for a phone call: one person talking
+ * into their own device, everything else treated as noise to be removed. That
+ * is right for Discuss, where people lean over one phone on a table.
+ *
+ * It is actively wrong for Listen. A lecturer three metres away arrives quiet
+ * and reverberant — exactly what a voice-call noise suppressor is designed to
+ * attenuate — so the speech we want is degraded before it ever leaves the
+ * machine, and no amount of work on the provider side gets it back. Echo
+ * cancellation has nothing to do here either: this app plays no audio, so
+ * there is no echo, only a chance to remove signal.
+ *
+ * Gain control stays on in both: it is what lifts a distant voice.
  */
-function audioConstraints(sampleRateHz: number, channels: number): MediaStreamConstraints {
+function audioConstraints(
+  sampleRateHz: number,
+  channels: number,
+  noiseReduction: 'none' | 'near_field' | 'far_field',
+): MediaStreamConstraints {
+  const farField = noiseReduction === 'far_field';
   return {
     audio: {
       channelCount: channels,
       sampleRate: sampleRateHz,
-      echoCancellation: true,
-      noiseSuppression: true,
+      echoCancellation: !farField,
+      noiseSuppression: !farField,
       autoGainControl: true,
     },
     video: false,
@@ -53,7 +66,7 @@ function isBrowserAudioStream(stream: AudioStreamLike): stream is BrowserAudioSt
 
 export function createBrowserTransportDependencies(): WebRtcTransportDependencies {
   return {
-    async requestMicrophone({ sampleRateHz, channels }): Promise<AudioStreamLike> {
+    async requestMicrophone({ sampleRateHz, channels, noiseReduction }): Promise<AudioStreamLike> {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw Object.assign(new Error('This browser cannot capture audio'), {
           name: 'NotSupportedError',
@@ -63,7 +76,7 @@ export function createBrowserTransportDependencies(): WebRtcTransportDependencie
       // microphone. Both names reach the error reference unchanged, so the two
       // are distinguishable from a screenshot.
       const stream = await navigator.mediaDevices.getUserMedia(
-        audioConstraints(sampleRateHz, channels),
+        audioConstraints(sampleRateHz, channels, noiseReduction),
       );
       const wrapped: BrowserAudioStream = {
         native: stream,
