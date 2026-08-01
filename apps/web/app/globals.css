@@ -38,6 +38,24 @@
 
   --font-sans: var(--ll-font-family);
   --font-mono: var(--ll-font-family-mono);
+
+  --shadow-card: var(--ll-shadow-card);
+  --shadow-raised: var(--ll-shadow-raised);
+  --shadow-pressed: var(--ll-shadow-pressed);
+  --shadow-speaking: var(--ll-shadow-speaking);
+
+  --ease-standard: var(--ll-easing-standard);
+  --ease-spring: var(--ll-easing-spring);
+
+  --duration-fast: var(--ll-duration-fast);
+  --duration-base: var(--ll-duration-base);
+
+  --tracking-display: var(--ll-tracking-display);
+  --tracking-h1: var(--ll-tracking-h1);
+  --tracking-h2: var(--ll-tracking-h2);
+  --tracking-title: var(--ll-tracking-title);
+  --tracking-body: var(--ll-tracking-body);
+  --tracking-label: var(--ll-tracking-label);
 }
 
 :root {
@@ -57,13 +75,95 @@ body {
   font-synthesis-weight: none;
   text-rendering: optimizeLegibility;
   min-height: 100dvh;
+  /*
+   * Grayscale antialiasing on a light background: subpixel rendering fattens
+   * medium weights just enough that headings read a step bolder than they are.
+   */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: var(--ll-tracking-body);
 }
 
-/* WCAG 2.2 §2.4.11/2.4.13 — focus must always be visible and never obscured. */
+/*
+ * Optical sizing. Large type set at default spacing looks typed rather than
+ * set: the words stop reading as one shape. This tightens as size grows and
+ * loosens below body size, where a little air is what keeps text legible at a
+ * glance.
+ */
+h1,
+.ll-display {
+  letter-spacing: var(--ll-tracking-h1);
+}
+h2 {
+  letter-spacing: var(--ll-tracking-h2);
+}
+h3,
+h4 {
+  letter-spacing: var(--ll-tracking-title);
+}
+.ll-label {
+  letter-spacing: var(--ll-tracking-label);
+}
+
+/*
+ * Translucent bars.
+ *
+ * A header the page blurs through belongs to the page rather than covering it,
+ * and it shows there is more above without a rule or a shadow announcing it.
+ * The opaque colour is the base, so nothing depends on `backdrop-filter`.
+ */
+.ll-material-bar {
+  background: var(--ll-color-surface);
+  border-color: var(--ll-color-border);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .ll-material-bar {
+    background: var(--ll-material-bar);
+    -webkit-backdrop-filter: saturate(180%) blur(var(--ll-material-bar-blur));
+    backdrop-filter: saturate(180%) blur(var(--ll-material-bar-blur));
+  }
+
+  .ll-material-sheet {
+    background: var(--ll-material-sheet);
+    -webkit-backdrop-filter: saturate(180%) blur(var(--ll-material-sheet-blur));
+    backdrop-filter: saturate(180%) blur(var(--ll-material-sheet-blur));
+  }
+}
+
+/*
+ * A control should feel like it takes the press, not like it fires an
+ * animation. Scale is tiny and instant on the way down, eased on the way back.
+ */
+.ll-pressable {
+  transition:
+    transform var(--ll-duration-fast) var(--ll-easing-spring),
+    box-shadow var(--ll-duration-fast) var(--ll-easing-standard),
+    background-color var(--ll-duration-fast) var(--ll-easing-standard);
+}
+
+.ll-pressable:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ll-pressable,
+  .ll-pressable:active:not(:disabled) {
+    transition: none;
+    transform: none;
+  }
+}
+
+/*
+ * WCAG 2.2 §2.4.11/2.4.13 — focus must always be visible and never obscured.
+ *
+ * The ring follows the element's own corner radius instead of squaring it off,
+ * so keyboard focus looks designed rather than bolted on.
+ */
 :focus-visible {
   outline: 3px solid var(--ll-color-focus-ring);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline-offset: 3px;
+  border-radius: inherit;
 }
 
 /* Every interactive element meets the 48px target from the design system. */

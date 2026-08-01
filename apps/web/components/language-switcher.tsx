@@ -34,7 +34,7 @@ export function LanguageSwitcher({ locale, label }: { locale: UiLocale; label: s
           {UI_LOCALE_DEFINITIONS.find((definition) => definition.locale === locale)?.nativeName}
         </span>
       </summary>
-      <ul className="absolute end-0 z-20 mt-2 min-w-[13rem] rounded-[var(--radius-lg)] border border-border bg-surface p-2 shadow-[var(--ll-shadow-raised)]">
+      <ul className="absolute end-0 z-20 mt-2 min-w-[13rem] rounded-[var(--radius-lg)] border border-border bg-surface p-2 shadow-[var(--shadow-raised)]">
         {UI_LOCALE_DEFINITIONS.map((definition) => (
           <li key={definition.locale}>
             <Link

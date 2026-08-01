@@ -48,7 +48,7 @@ export function LanguagePicker({
       onClick={onClose}
     >
       <div
-        className="max-h-[85dvh] w-full max-w-md overflow-hidden rounded-t-[var(--radius-xl)] bg-surface sm:rounded-[var(--radius-xl)]"
+        className="ll-material-sheet max-h-[85dvh] w-full max-w-md overflow-hidden rounded-t-[var(--radius-xl)] bg-surface shadow-[var(--shadow-raised)] sm:rounded-[var(--radius-xl)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="border-b border-border p-4">

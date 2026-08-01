@@ -214,6 +214,25 @@ export const fontWeight = {
   bold: '700',
 } as const;
 
+/**
+ * Letter-spacing, which is the difference between type that was set and type
+ * that was merely rendered.
+ *
+ * Optical sizing: at display sizes the default spacing looks loose and the
+ * words fail to read as one shape, so it tightens as size grows. Small text
+ * goes the other way — caption and label sizes need a little air to stay
+ * legible, especially reversed out or at a glance.
+ */
+export const tracking = {
+  display: '-0.022em',
+  h1: '-0.019em',
+  h2: '-0.016em',
+  title: '-0.012em',
+  body: '-0.006em',
+  caption: '0',
+  label: '0.006em',
+} as const;
+
 export const lineHeight = {
   tight: 1.2,
   snug: 1.35,
@@ -265,6 +284,12 @@ export const easing = {
   standard: 'cubic-bezier(0.2, 0, 0, 1)',
   decelerate: 'cubic-bezier(0, 0, 0, 1)',
   accelerate: 'cubic-bezier(0.3, 0, 1, 1)',
+  /**
+   * Slight overshoot, for something arriving rather than being placed.
+   * Deliberately gentle: at a real spring's amplitude this reads as a wobble,
+   * and a wobble on every button press is a tic.
+   */
+  spring: 'cubic-bezier(0.34, 1.4, 0.64, 1)',
 } as const;
 
 /** Every animation must go through this so Reduce Motion is never ignored. */
@@ -276,15 +301,57 @@ export function motionDuration(ms: number, reduceMotion: boolean): number {
 // Elevation
 // ---------------------------------------------------------------------------
 
+/**
+ * Depth, built from two shadows rather than one.
+ *
+ * A single blurred shadow reads as a drop shadow. Two — a tight contact shadow
+ * that anchors the edge, plus a wide soft one for the ambient light — reads as
+ * an object sitting on a surface. The tight one carries most of the definition
+ * and the wide one almost none, which is why both are barely visible on their
+ * own.
+ */
 export const shadow = {
   none: { web: 'none', elevation: 0 },
   card: {
-    web: '0 1px 2px rgba(13,23,38,0.04), 0 8px 24px rgba(13,23,38,0.06)',
+    web: '0 1px 2px rgba(13,23,38,0.05), 0 8px 24px -8px rgba(13,23,38,0.10)',
     elevation: 2,
   },
   raised: {
-    web: '0 2px 4px rgba(13,23,38,0.06), 0 16px 40px rgba(13,23,38,0.10)',
+    web: '0 2px 6px rgba(13,23,38,0.07), 0 20px 48px -16px rgba(13,23,38,0.16)',
     elevation: 6,
+  },
+  /** A control under the finger: pulled in, not pushed out. */
+  pressed: {
+    web: 'inset 0 1px 3px rgba(13,23,38,0.14)',
+    elevation: 0,
+  },
+  /** Whoever is talking, visible across a table and upside down. */
+  speaking: {
+    web: '0 0 0 4px rgba(20,168,139,0.16), 0 8px 28px -6px rgba(20,168,139,0.35)',
+    elevation: 8,
+  },
+} as const;
+
+/**
+ * Translucent materials.
+ *
+ * A bar that lets the content blur through it belongs to the page instead of
+ * covering it, and it tells you there is more above or below without a line or
+ * a shadow doing the shouting. Falls back to the opaque surface colour wherever
+ * `backdrop-filter` is unavailable — the layout never depends on it.
+ */
+export const material = {
+  /** Sticky headers and bottom bars. */
+  bar: {
+    light: 'rgba(255,255,255,0.72)',
+    dark: 'rgba(16,28,46,0.72)',
+    blur: '20px',
+  },
+  /** Sheets and dialogs, which sit further from the page. */
+  sheet: {
+    light: 'rgba(255,255,255,0.86)',
+    dark: 'rgba(16,28,46,0.86)',
+    blur: '30px',
   },
 } as const;
 
@@ -337,9 +404,20 @@ export function cssVariables(theme: ThemeName): Record<string, string> {
   }
   vars['--ll-font-family'] = fontFamily.web;
   vars['--ll-font-family-mono'] = fontFamily.webMono;
+  for (const [key, value] of Object.entries(tracking)) {
+    vars[`--ll-tracking-${toKebab(key)}`] = value;
+  }
   vars['--ll-easing-standard'] = easing.standard;
+  vars['--ll-easing-spring'] = easing.spring;
+  vars['--ll-easing-decelerate'] = easing.decelerate;
   vars['--ll-shadow-card'] = shadow.card.web;
   vars['--ll-shadow-raised'] = shadow.raised.web;
+  vars['--ll-shadow-pressed'] = shadow.pressed.web;
+  vars['--ll-shadow-speaking'] = shadow.speaking.web;
+  vars['--ll-material-bar'] = material.bar[theme];
+  vars['--ll-material-bar-blur'] = material.bar.blur;
+  vars['--ll-material-sheet'] = material.sheet[theme];
+  vars['--ll-material-sheet-blur'] = material.sheet.blur;
   vars['--ll-min-touch-target'] = `${MIN_TOUCH_TARGET}px`;
   return vars;
 }

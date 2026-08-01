@@ -16,20 +16,32 @@ export function cx(...classes: Array<string | false | null | undefined>): string
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'md' | 'lg';
 
+/*
+ * `ll-pressable` gives every button the same press: a 3% scale that answers the
+ * finger immediately and eases back. It is the one piece of motion in the
+ * product that fires constantly, so it is deliberately below the threshold of
+ * something you would call an animation — you notice its absence, not its
+ * presence. Reduce Motion removes it (see globals.css).
+ */
 const BUTTON_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-[var(--radius-md)] font-semibold ' +
-  'transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed select-none';
+  'll-pressable inline-flex items-center justify-center gap-2 rounded-[var(--radius-full)] ' +
+  'font-semibold tracking-[var(--tracking-label)] ' +
+  'disabled:opacity-45 disabled:cursor-not-allowed disabled:shadow-none select-none';
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-primary text-on-primary hover:bg-primary-hover',
-  secondary: 'bg-surface text-ink border border-border hover:border-border-strong',
+  // A filled button carries its own small shadow so it reads as a physical
+  // control on the surface rather than a coloured rectangle painted on it.
+  primary:
+    'bg-primary text-on-primary shadow-[var(--shadow-card)] hover:bg-primary-hover active:shadow-[var(--shadow-pressed)]',
+  secondary:
+    'bg-surface text-ink border border-border shadow-[var(--shadow-card)] hover:border-border-strong active:shadow-[var(--shadow-pressed)]',
   ghost: 'bg-transparent text-primary-text hover:bg-primary-soft',
   danger: 'bg-danger-soft text-danger hover:brightness-95',
 };
 
 const BUTTON_SIZES: Record<ButtonSize, string> = {
-  md: 'px-4 py-3 text-[15px]',
-  lg: 'px-6 py-4 text-[17px]',
+  md: 'px-5 py-3 text-[15px]',
+  lg: 'px-7 py-4 text-[17px]',
 };
 
 export function Button({
@@ -90,8 +102,8 @@ export function Card({
   return (
     <Component
       className={cx(
-        'rounded-[var(--radius-lg)] border border-border bg-surface p-6',
-        'shadow-[var(--ll-shadow-card)]',
+        'rounded-[var(--radius-xl)] border border-border bg-surface p-6',
+        'shadow-[var(--shadow-card)]',
         className,
       )}
     >

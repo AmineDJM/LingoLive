@@ -110,7 +110,7 @@ export function Transcript({
           type="button"
           onClick={scrollToLive}
           data-testid="back-to-live"
-          className="absolute bottom-4 start-1/2 -translate-x-1/2 rounded-[var(--radius-full)] bg-primary px-5 py-3 text-[15px] font-semibold text-on-primary shadow-[var(--ll-shadow-raised)]"
+          className="absolute bottom-4 start-1/2 -translate-x-1/2 rounded-[var(--radius-full)] bg-primary px-5 py-3 text-[15px] font-semibold text-on-primary shadow-[var(--shadow-raised)]"
         >
           ↓ {backToLiveLabel}
         </button>

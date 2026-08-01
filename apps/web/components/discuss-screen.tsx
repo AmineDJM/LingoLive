@@ -96,7 +96,11 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
     }
   };
 
+  // Idempotent on purpose: pointerup, pointercancel and lostpointercapture can
+  // all fire for one gesture, and releasing a turn nobody holds must be a no-op
+  // rather than something that cuts off whoever spoke next.
   const onSpeakEnd = (tile: DiscussionTile): void => {
+    if (discussion.activeSpeakerTileId !== tile.id) return;
     setDiscussion(stopSpeakingIn(discussion, tile.id));
     session.stopSpeaking(tile.id);
   };
@@ -156,9 +160,14 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                 ['--ll-tile-rotation' as string]: `${tile.rotation}deg`,
               }}
               data-quarter-turn={tileTransform(tile).isQuarterTurn}
+              data-speaking={active ? 'true' : 'false'}
               className={cx(
-                'll-tile min-h-0 rounded-[var(--radius-lg)] border-2',
-                active ? 'border-live bg-live-soft' : 'border-border bg-surface',
+                'll-tile min-h-0 rounded-[var(--radius-lg)] border-2 transition-[background-color,border-color,box-shadow] duration-[var(--duration-base)] ease-[var(--ease-standard)]',
+                // Whoever is talking has to be obvious from across a table, at
+                // a glance, upside down. A pale tint was not.
+                active
+                  ? 'border-live bg-live-soft shadow-[var(--shadow-speaking)]'
+                  : 'border-border bg-surface',
               )}
               dir={tile.direction}
             >
@@ -209,26 +218,60 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                 <button
                   type="button"
                   disabled={blocked}
-                  onPointerDown={() => onSpeakStart(tile)}
+                  /*
+                    Hold to talk, and it must be impossible to get stuck holding.
+                    `pointerup` alone is not enough: on a touch screen the
+                    browser fires `pointercancel` instead whenever it decides
+                    the gesture became a scroll, and that fires neither `up` nor
+                    `leave`. The tile stayed "speaking", every other tile stayed
+                    blocked, and the only way out was reloading the page.
+
+                    Capturing the pointer routes every later event back to this
+                    button — even if the finger slides off it — and `cancel` is
+                    handled explicitly. Between them there is no path that ends
+                    a gesture without releasing the turn.
+                  */
+                  onPointerDown={(event) => {
+                    // Taking the turn comes first. Capture is a safeguard, and
+                    // `setPointerCapture` throws for a pointer the browser does
+                    // not consider live — letting that escape would mean the
+                    // safeguard against a stuck turn was itself what stopped
+                    // the turn from starting.
+                    onSpeakStart(tile);
+                    try {
+                      event.currentTarget.setPointerCapture?.(event.pointerId);
+                    } catch {
+                      // No capture: `pointercancel` still releases the turn.
+                    }
+                  }}
                   onPointerUp={() => onSpeakEnd(tile)}
-                  onPointerLeave={() => active && onSpeakEnd(tile)}
+                  onPointerCancel={() => onSpeakEnd(tile)}
+                  onLostPointerCapture={() => onSpeakEnd(tile)}
                   data-testid={`tile-speak-${tile.position}`}
                   aria-label={t.t('a11y.speakButton', { language: languageName })}
                   aria-pressed={active}
                   className={cx(
-                    'mt-2 flex w-full items-center justify-center rounded-[var(--radius-md)] py-4 text-[15px] font-bold',
+                    'll-pressable mt-2 flex w-full items-center justify-center gap-2 rounded-[var(--radius-full)]',
+                    'py-4 text-[15px] font-bold tracking-[var(--tracking-label)]',
                     active
-                      ? 'bg-live text-on-primary'
+                      ? 'bg-live text-on-primary shadow-[var(--shadow-speaking)]'
                       : blocked
-                        ? 'bg-surface text-ink-muted'
-                        : 'bg-primary text-on-primary',
+                        ? 'bg-surface text-ink-muted shadow-none'
+                        : 'bg-primary text-on-primary shadow-[var(--shadow-card)]',
                   )}
                 >
-                  {active
-                    ? t.t('discuss.speaking')
-                    : blocked
-                      ? t.t('discuss.someoneElseSpeaking')
-                      : t.t('discuss.speak')}
+                  {active ? (
+                    <>
+                      {/* The same pulsing dot the Listen screen uses for live:
+                          one vocabulary for "this is happening now". */}
+                      <span className="ll-live-dot h-2.5 w-2.5 rounded-full bg-on-primary" />
+                      {t.t('discuss.speaking')}
+                    </>
+                  ) : blocked ? (
+                    t.t('discuss.someoneElseSpeaking')
+                  ) : (
+                    t.t('discuss.speak')
+                  )}
                 </button>
               </div>
             </section>

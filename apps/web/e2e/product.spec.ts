@@ -186,6 +186,32 @@ test.describe('Discuss', () => {
     await expect(tile).toHaveAttribute('data-direction', 'rtl');
   });
 
+  test('hands the turn back after a cancelled gesture, without a reload', async ({ page }) => {
+    // A touch gesture the browser reclassifies as a scroll fires
+    // `pointercancel` — neither `pointerup` nor `pointerleave`. The tile stayed
+    // "speaking" for ever, every other tile stayed blocked, and the only way to
+    // let the next person talk was reloading the page.
+    await page.goto('/en/discuss');
+    await page.getByTestId('people-2').click();
+
+    const first = page.getByTestId('tile-speak-0');
+    const second = page.getByTestId('tile-speak-1');
+
+    await first.dispatchEvent('pointerdown', { pointerId: 1, isPrimary: true });
+    await expect(page.getByTestId('tile-0')).toHaveAttribute('data-speaking', 'true');
+    await expect(second).toBeDisabled();
+
+    // The gesture dies without an "up".
+    await first.dispatchEvent('pointercancel', { pointerId: 1, isPrimary: true });
+
+    await expect(page.getByTestId('tile-0')).toHaveAttribute('data-speaking', 'false');
+    await expect(second).toBeEnabled();
+
+    // And the next person can actually take the turn.
+    await second.dispatchEvent('pointerdown', { pointerId: 2, isPrimary: true });
+    await expect(page.getByTestId('tile-1')).toHaveAttribute('data-speaking', 'true');
+  });
+
   test('allows only one speaker at a time', async ({ page }) => {
     await page.goto('/en/discuss');
     await page.getByTestId('people-2').click();

@@ -18,7 +18,7 @@ export function SiteHeader({ locale }: { locale: UiLocale }) {
   const home = localizedPath(locale);
 
   return (
-    <header className="sticky top-0 z-10 border-b border-border bg-[color-mix(in_srgb,var(--color-background)_88%,transparent)] backdrop-blur">
+    <header className="ll-material-bar sticky top-0 z-10 border-b">
       <nav
         aria-label={t.t('nav.home')}
         className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3 sm:px-6"
