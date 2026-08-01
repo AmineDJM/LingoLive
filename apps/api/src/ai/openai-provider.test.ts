@@ -25,7 +25,10 @@ function providerFor(
   const env = parseServerEnv({
     ...process.env,
     AI_PROVIDER: 'openai',
-    OPENAI_API_KEY: 'sk-test-key-not-a-real-credential',
+    // Deliberately not shaped like a real provider key: the secret scanner
+    // rightly flags anything that is, and a test fixture is not worth an
+    // exception in a check that exists to stop a key reaching the repository.
+    OPENAI_API_KEY: 'test-provider-credential-placeholder',
     OPENAI_TRANSCRIPTION_MODEL: 'gpt-live-transcribe',
     OPENAI_TRANSLATION_MODEL: 'gpt-5.6-luna',
     ...overrides,
@@ -140,8 +143,8 @@ describe('OpenAI transcription credential request', () => {
 
     await providerFor(fetchFn).createEphemeralCredential(baseRequest);
 
-    expect(calls[0]?.url).not.toContain('sk-test-key');
-    expect(String(calls[0]?.init?.body)).not.toContain('sk-test-key');
+    expect(calls[0]?.url).not.toContain('test-provider-credential');
+    expect(String(calls[0]?.init?.body)).not.toContain('test-provider-credential');
   });
 });
 

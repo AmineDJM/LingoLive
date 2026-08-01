@@ -198,6 +198,25 @@ function validate(parseServerEnv, file, failures, countChecked) {
     }
   }
 
+  // A variable that ends up in a URL the BROWSER uses cannot be wired to a
+  // service reference: `property: host` yields a platform-internal name with no
+  // domain. Server-to-server HTTP still works, so it looks correct — but the
+  // Content-Security-Policy built from it lists an origin the browser never
+  // dials, and the realtime socket is blocked with nothing in any server log.
+  // Must be entered as the service's real public address instead.
+  const BROWSER_FACING = new Set(['API_ORIGIN', 'APP_BASE_URL', 'WEB_BASE_URL', 'API_BASE_URL']);
+  for (const service of blueprint.services ?? []) {
+    for (const entry of service.envVars ?? []) {
+      if (!BROWSER_FACING.has(entry.key)) continue;
+      if (entry.fromService?.property === 'host') {
+        structural.push(
+          `${service.name}.${entry.key} uses fromService property: host, which resolves to an ` +
+            `internal name with no domain — enter the public URL instead (sync: false)`,
+        );
+      }
+    }
+  }
+
   const uniqueStructural = [...new Set(structural)];
   if (uniqueStructural.length > 0) {
     console.log('');

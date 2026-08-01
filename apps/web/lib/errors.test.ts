@@ -93,8 +93,27 @@ describe('errorCodeOf', () => {
     expect(errorCodeOf({ code: 'SESSION_FULL' })).toBe('SESSION_FULL');
   });
 
-  it('treats an unrecognised throw as an internal error rather than crashing', () => {
-    expect(errorCodeOf(new TypeError('undefined is not an object'))).toBe('INTERNAL_ERROR');
+  it("uses the browser's own name for a failure the API never saw", () => {
+    // A CSP that does not list the realtime origin makes `new WebSocket()`
+    // throw this. There is no request id and no server log line, because the
+    // server was never reached — the name is the only thing identifying it.
+    const securityError = new Error('The operation is insecure.');
+    securityError.name = 'SecurityError';
+    expect(errorCodeOf(securityError)).toBe('SecurityError');
+
+    const micRefused = new Error('Permission denied');
+    micRefused.name = 'NotAllowedError';
+    expect(errorCodeOf(micRefused)).toBe('NotAllowedError');
+  });
+
+  it('prefers the API code over the error name when both exist', () => {
+    const apiError = Object.assign(new Error('nope'), { code: 'SESSION_FULL', name: 'TypeError' });
+    expect(errorCodeOf(apiError)).toBe('SESSION_FULL');
+  });
+
+  it('falls back to an internal error when there is nothing to go on', () => {
+    expect(errorCodeOf(new Error('boom'))).toBe('INTERNAL_ERROR');
     expect(errorCodeOf(null)).toBe('INTERNAL_ERROR');
+    expect(errorCodeOf('a string')).toBe('INTERNAL_ERROR');
   });
 });

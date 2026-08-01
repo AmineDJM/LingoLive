@@ -22,14 +22,43 @@ const apiOrigin = normalizeBaseUrl(
 
 const appEnv = process.env.NEXT_PUBLIC_APP_ENV ?? 'development';
 
+const isRealDeployment = appEnv !== 'development' && appEnv !== 'test';
+
 // The browser never calls the API directly, so a proxy target left pointing at
 // localhost in a real deployment means every request dies at this server. It
 // cannot throw — `next start` re-reads this file and refusing here would stop
 // a running site — so it says so loudly in the log instead.
-if (appEnv !== 'development' && appEnv !== 'test' && /localhost|127\.0\.0\.1/.test(apiOrigin)) {
+if (isRealDeployment && /localhost|127\.0\.0\.1/.test(apiOrigin)) {
   console.warn(
     `\n[LingoLive] API_ORIGIN is ${apiOrigin} but this is a ${appEnv} deployment.\n` +
       '           Every API call will fail. Set API_ORIGIN to the API service URL.\n',
+  );
+}
+
+/**
+ * API_ORIGIN must be the API's PUBLIC address, not a platform-internal name.
+ *
+ * It is used for two things that must agree: this server proxies `/api/*` to
+ * it, and the `connect-src` below is derived from it. The realtime WebSocket is
+ * the one connection a rewrite cannot proxy, so the browser dials the API
+ * directly — at the public address the API itself advertises, built from its
+ * `API_BASE_URL`.
+ *
+ * Wiring this to a platform's service reference yields a bare internal name
+ * like `lingolive-api-staging-n4cp`, with no domain. HTTP still worked, so it
+ * looked correct; `connect-src` then listed an origin nobody ever dials, and
+ * the browser blocked the socket. `new WebSocket()` throws a `SecurityError`
+ * for that, which surfaced as an unexplained failure on the first tap of
+ * Listen with nothing in the server log — because the server was never reached.
+ *
+ * A public hostname has a dot in it. An internal one does not.
+ */
+const apiHostname = apiOrigin.replace(/^[a-z]+:\/\//i, '').split(/[:/]/)[0] ?? '';
+if (isRealDeployment && apiHostname && !apiHostname.includes('.')) {
+  console.warn(
+    `\n[LingoLive] API_ORIGIN is "${apiHostname}", which is not a public hostname.\n` +
+      '           The realtime connection will be blocked by the Content-Security-Policy.\n' +
+      "           Set API_ORIGIN to the same value as the API service's API_BASE_URL.\n",
   );
 }
 

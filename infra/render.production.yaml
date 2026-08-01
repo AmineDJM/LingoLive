@@ -190,13 +190,20 @@ services:
         value: '10000'
       - key: NEXT_PUBLIC_APP_ENV
         value: production
-      # Where this server forwards /api/*. NOT a NEXT_PUBLIC_ value, so it is
-      # read when the server starts rather than compiled into the browser
+      # Where this server forwards /api/*, AND the origin the browser is
+      # allowed to open the realtime WebSocket to. NOT a NEXT_PUBLIC_ value, so
+      # it is read when the server starts rather than compiled into the browser
       # bundle: pointing the site at a different API is a restart, not a
-      # rebuild. The browser never sees it and never calls it directly.
+      # rebuild.
+      #
+      # Deliberately not `fromService: { property: host }` — that resolves to an
+      # internal service name with no domain, which proxies HTTP fine but makes
+      # the Content-Security-Policy list an origin the browser never dials, so
+      # the realtime socket is blocked. See infra/render.yaml for the full note.
+      #
+      # Enter the SAME value as API_BASE_URL on the API service.
       - key: API_ORIGIN
-        fromService:
-          { name: lingolive-api-production, type: web, property: host }
+        sync: false # https://api.lingolive.app
       # This one IS compiled in — it is the site's own public address, used for
       # canonical tags, the sitemap and share links. Entered once, from the URL
       # Render shows on this service.

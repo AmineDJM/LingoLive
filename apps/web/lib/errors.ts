@@ -61,11 +61,29 @@ export function localisedError(t: Translator, code: string): string {
   }
 }
 
-/** Pulls the code out of anything thrown by `@lingolive/api-client`. */
+/**
+ * Pulls the code out of anything thrown while starting a session.
+ *
+ * Not everything comes from the API. `new WebSocket()` throws a `SecurityError`
+ * when the Content-Security-Policy does not list the origin it is dialling, and
+ * `getUserMedia` throws a `NotAllowedError` when the microphone is refused.
+ * Both used to collapse into a bare `INTERNAL_ERROR`, which says only that
+ * something happened somewhere — and neither leaves a trace in the server log,
+ * because the server was never reached.
+ *
+ * The browser's own name for the failure is far more use than our fallback, so
+ * it becomes the code. It has no localised copy and does not need one: the
+ * message stays generic, and the name goes in the reference line for whoever
+ * has to fix it.
+ */
 export function errorCodeOf(error: unknown): string {
-  return typeof error === 'object' && error && 'code' in error
-    ? String((error as { code: unknown }).code)
-    : 'INTERNAL_ERROR';
+  if (typeof error === 'object' && error && 'code' in error) {
+    return String((error as { code: unknown }).code);
+  }
+  if (error instanceof Error && error.name && error.name !== 'Error') {
+    return error.name;
+  }
+  return 'INTERNAL_ERROR';
 }
 
 /**

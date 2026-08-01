@@ -149,17 +149,29 @@ interface RealtimeTranscriptionTransport {
 }
 ```
 
-Three implementations:
+One implementation exists today:
 
 - **Mock** — plays fixtures. No microphone, no network, no account. This is what
   makes the whole product demonstrable and testable offline.
-- **Web** — `getUserMedia` plus a WebSocket to the provider, using the ephemeral
-  credential the API minted.
-- **Mobile** — the same shape over the native audio module.
 
-The server chooses which one a client should use and returns it in the token
-response, so switching providers or transports is a server-side decision. See
-ADR-0004 for why the mobile transport is what it is.
+Two are specified and **not yet built**:
+
+- **Web** — `getUserMedia` plus WebRTC to the provider, using the ephemeral
+  credential the API minted.
+- **Mobile** — the same shape over the native audio module. See ADR-0004 for why
+  the mobile transport is what it is.
+
+> **This is the gap between the demo and the product.** `use-live-session.ts`
+> and `use-session.ts` both construct `MockTranscriptionTransport`
+> unconditionally, so a deployment with a real provider key mints a real
+> credential, never uses it, and plays scripted fixtures. Every surface around
+> it — tokens, quotas, the hub, fan-out, persistence, save and delete — runs for
+> real; the microphone does not. Nothing in the product says so, which is worse
+> than the gap itself.
+
+The server already chooses which transport a client should use and returns it as
+`config.transport` in the token response, so switching providers or transports
+stays a server-side decision. No client reads that field yet.
 
 ## Minting the provider credential
 
