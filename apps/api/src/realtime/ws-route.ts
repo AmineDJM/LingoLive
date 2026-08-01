@@ -37,6 +37,23 @@ interface ConnectionState {
   anonymousHash: string | null;
   /** Last provisional text translated, per slot — drives debouncing. */
   lastProvisional: Map<string, string>;
+  /**
+   * Slots with a provisional translation in flight, and the newest text
+   * waiting behind it.
+   *
+   * Partials arrive several times a second and each message is handled
+   * concurrently, so without this a single sentence fires a translation call
+   * per growth step, all at once. They then land in whatever order they
+   * finish and overwrite each other on the same sequence — the reader sees
+   * the line jump backwards — and the burst is what pushes the provider into
+   * rate limiting, which is where the multi-second delays came from.
+   *
+   * One call per slot at a time; the newest text is translated as soon as the
+   * current one returns. Never more than one request in flight, never a stale
+   * result overwriting a fresher one.
+   */
+  provisionalInFlight: Set<string>;
+  provisionalPending: Map<string, string>;
   authenticated: boolean;
   /** Audio seconds this connection reported, reconciled at session end. */
   reportedAudioSeconds: number;
@@ -205,6 +222,8 @@ export async function registerRealtimeRoute(
         userId: claims.isGuest ? null : claims.sub,
         anonymousHash: typeof claims.anonymousHash === 'string' ? claims.anonymousHash : null,
         lastProvisional: new Map(),
+        provisionalInFlight: new Set(),
+        provisionalPending: new Map(),
         authenticated: true,
         reportedAudioSeconds: 0,
       };
@@ -369,20 +388,63 @@ export async function registerRealtimeRoute(
       }
       current.lastProvisional.set(slotKey, event.text);
 
-      const targets = await resolveTargetLanguages(current, event.slotId ?? null);
+      // Something is already translating this slot. Leave the newest text for
+      // it to pick up and return: firing a second call now would race the
+      // first, and whichever finished last would win regardless of which was
+      // newer.
+      if (current.provisionalInFlight.has(slotKey)) {
+        current.provisionalPending.set(slotKey, event.text);
+        return;
+      }
+
+      current.provisionalInFlight.add(slotKey);
+      try {
+        let text = event.text;
+        for (;;) {
+          await translateProvisional(current, {
+            slotId: event.slotId ?? null,
+            text,
+            sourceLanguage: event.sourceLanguage,
+            sequence: provisionalSequence,
+          });
+
+          // Whatever arrived while that call was out is now the truth. Anything
+          // between it and `text` is skipped on purpose — it is already stale,
+          // and the reader would never see it.
+          const pending = current.provisionalPending.get(slotKey);
+          current.provisionalPending.delete(slotKey);
+          if (pending === undefined || pending === text) break;
+          text = pending;
+        }
+      } finally {
+        current.provisionalInFlight.delete(slotKey);
+        current.provisionalPending.delete(slotKey);
+      }
+    }
+
+    async function translateProvisional(
+      current: ConnectionState,
+      segment: {
+        slotId: string | null;
+        text: string;
+        sourceLanguage: string | undefined;
+        sequence: number;
+      },
+    ): Promise<void> {
+      const targets = await resolveTargetLanguages(current, segment.slotId);
       if (targets.length === 0) return;
 
       try {
         const results = await context.ai.translation.translateSegment({
-          text: event.text,
-          sourceLanguage: event.sourceLanguage,
+          text: segment.text,
+          sourceLanguage: segment.sourceLanguage,
           targetLanguages: targets,
         });
         for (const result of results) {
           context.hub.broadcastToLanguage(current.sessionId, result.targetLanguage, {
             type: 'translation.partial',
             sessionId: current.sessionId,
-            sequence: provisionalSequence,
+            sequence: segment.sequence,
             targetLanguage: result.targetLanguage,
             text: result.translatedText,
           });

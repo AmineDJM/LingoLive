@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseServerEnv } from '@lingolive/config';
 import { createSilentLogger } from '@lingolive/logging';
 import { LingoLiveError } from '@lingolive/contracts';
-import { OpenAiTranscriptionProvider } from './openai-provider.js';
+import { OpenAiTranscriptionProvider, OpenAiTranslationProvider } from './openai-provider.js';
 import type { TranscriptionCredentialRequest } from './types.js';
 
 /**
@@ -350,5 +350,102 @@ describe('OpenAI transcription failures', () => {
 
     const credential = await providerFor(nested).createEphemeralCredential(baseRequest);
     expect(credential.clientSecret).toBe('ek_nested');
+  });
+});
+
+describe('translation on the critical path', () => {
+  /**
+   * Between someone speaking and someone reading. Every token here is time a
+   * person spends watching a line that has not arrived, which is why the
+   * single-language case — a person reading a room in their own language, i.e.
+   * most of them — is treated separately.
+   */
+  interface ChatBody {
+    messages?: Array<{ role: string; content: string }>;
+    response_format?: { type: string };
+    max_tokens?: number;
+    temperature?: number;
+  }
+
+  function chatFetch(content: string): { bodies: ChatBody[]; fetchFn: typeof fetch } {
+    const bodies: ChatBody[] = [];
+    const fetchFn = (async (_url: string | URL, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body ?? '{}')) as ChatBody);
+      return new Response(JSON.stringify({ choices: [{ message: { content } }], usage: {} }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }) as unknown as typeof fetch;
+    return { bodies, fetchFn };
+  }
+
+  function translatorFor(fetchFn: typeof fetch): OpenAiTranslationProvider {
+    const env = parseServerEnv({
+      ...process.env,
+      AI_PROVIDER: 'openai',
+      OPENAI_API_KEY: 'test-provider-credential-placeholder',
+      OPENAI_TRANSLATION_MODEL: 'gpt-5.6-luna',
+    });
+    return new OpenAiTranslationProvider(env, createSilentLogger(), fetchFn);
+  }
+
+  it('asks for plain text when there is one reading language', async () => {
+    const { bodies, fetchFn } = chatFetch('Bonjour tout le monde.');
+    const results = await translatorFor(fetchFn).translateSegment({
+      text: 'Hello everyone.',
+      sourceLanguage: 'en',
+      targetLanguages: ['fr'],
+    });
+
+    // No JSON envelope to generate: the wrapper is pure latency when there is
+    // exactly one slot to fill.
+    expect(bodies[0]?.response_format).toBeUndefined();
+    expect(results[0]?.translatedText).toBe('Bonjour tout le monde.');
+    expect(results[0]?.targetLanguage).toBe('fr');
+  });
+
+  it('still uses JSON when several languages must be told apart', async () => {
+    const { bodies, fetchFn } = chatFetch(
+      JSON.stringify({ translations: { fr: 'Bonjour.', es: 'Hola.' } }),
+    );
+    const results = await translatorFor(fetchFn).translateSegment({
+      text: 'Hello.',
+      sourceLanguage: 'en',
+      targetLanguages: ['fr', 'es'],
+    });
+
+    expect(bodies[0]?.response_format).toEqual({ type: 'json_object' });
+    expect(results).toHaveLength(2);
+  });
+
+  it('bounds the reply so one confused generation cannot stall the line', async () => {
+    const { bodies, fetchFn } = chatFetch('Bonjour.');
+    await translatorFor(fetchFn).translateSegment({
+      text: 'Hello.',
+      sourceLanguage: 'en',
+      targetLanguages: ['fr'],
+    });
+
+    expect(bodies[0]?.max_tokens).toBeGreaterThan(0);
+    expect(bodies[0]?.max_tokens).toBeLessThanOrEqual(1200);
+    // A live caption is a translation, not a rewrite.
+    expect(bodies[0]?.temperature).toBe(0);
+  });
+
+  it('never asks for a translation into the language already being spoken', async () => {
+    let called = false;
+    const fetchFn = (async () => {
+      called = true;
+      return new Response('{}', { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const results = await translatorFor(fetchFn).translateSegment({
+      text: 'Bonjour.',
+      sourceLanguage: 'fr',
+      targetLanguages: ['fr'],
+    });
+
+    expect(results).toEqual([]);
+    expect(called).toBe(false);
   });
 });

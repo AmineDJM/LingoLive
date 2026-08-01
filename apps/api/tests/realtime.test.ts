@@ -209,6 +209,66 @@ describe('the transcription credential', () => {
   });
 });
 
+describe('provisional translation under a fast speaker', () => {
+  it('keeps one call in flight and never lets a stale one overwrite a newer', async () => {
+    // Partials arrive several times a second and each is handled concurrently.
+    // Without a bound, one sentence fires a translation per growth step, all at
+    // once; they land in whatever order they finish and overwrite each other on
+    // the same sequence, so the reader watches the line jump backwards. The
+    // burst is also what pushed the provider into rate limiting, which is where
+    // the multi-second delays came from.
+    const { realtimeToken } = await createListenSession();
+
+    const original = harness.context.ai.translation.translateSegment.bind(
+      harness.context.ai.translation,
+    );
+    let inFlight = 0;
+    let peak = 0;
+    const translated: string[] = [];
+    harness.context.ai.translation.translateSegment = async (input) => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      translated.push(input.text);
+      // Long enough that a burst would genuinely overlap.
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      try {
+        return await original(input);
+      } finally {
+        inFlight -= 1;
+      }
+    };
+
+    try {
+      const client = new TestClient(`${baseUrl}/realtime`);
+      await client.open();
+      client.send({ type: 'session.join', token: realtimeToken, lastSequence: 0 });
+      await client.waitFor('session.snapshot');
+
+      // A sentence growing the way speech arrives, in steps large enough that
+      // each one clears the existing debounce and would fire its own call.
+      const steps = [
+        'The revenue grew by twelve',
+        'The revenue grew by twelve percent compared with last',
+        'The revenue grew by twelve percent compared with last year, and the board is pleased',
+      ];
+      for (const text of steps) {
+        client.send({ type: 'transcript.partial', text, sourceLanguage: 'en' });
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      client.close();
+
+      expect(peak).toBe(1);
+      // The newest text is what ends up translated: the middle step was
+      // superseded before its turn came and was skipped rather than sent.
+      expect(translated.at(-1)).toBe(steps[2]);
+      expect(translated.length).toBeLessThan(steps.length);
+    } finally {
+      harness.context.ai.translation.translateSegment = original;
+    }
+  });
+});
+
 describe('realtime session', () => {
   it('sends a snapshot on join and streams partial then final text', async () => {
     const { realtimeToken } = await createListenSession();

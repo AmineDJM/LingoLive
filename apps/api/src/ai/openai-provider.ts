@@ -347,16 +347,23 @@ export class OpenAiTranslationProvider implements TranslationProvider {
       })
       .join(', ');
 
-    const system = [
+    // One target is the common case — a person reading a room in their own
+    // language — and it gets the shortest possible instruction and reply.
+    const single = targets.length === 1;
+    const rules = [
       'You are a translation engine inside a live captioning product.',
-      'Translate the user text faithfully into every requested language.',
       'Rules:',
       '- Preserve numbers, dates, units, currency amounts and proper nouns exactly.',
       '- Preserve the register and the punctuation of the source.',
       '- Do not add, remove, explain, summarise or comment.',
       '- If the text is incomplete, translate what is there without completing it.',
-      'Reply with JSON only, of the form {"translations":{"<language code>":"<text>"}}.',
-    ].join('\n');
+    ];
+    const system = single
+      ? [...rules, 'Reply with the translation only, and nothing else.'].join('\n')
+      : [
+          ...rules,
+          'Reply with JSON only, of the form {"translations":{"<language code>":"<text>"}}.',
+        ].join('\n');
 
     const contextLines = input.context?.recentSegments?.length
       ? `Preceding context (do not translate, use only for continuity):\n${input.context.recentSegments.join('\n')}\n\n`
@@ -385,8 +392,16 @@ export class OpenAiTranslationProvider implements TranslationProvider {
             { role: 'system', content: system },
             { role: 'user', content: user },
           ],
-          // Structured output: the response is parseable or the call failed.
-          response_format: { type: 'json_object' },
+          // JSON only when there is something to key by. A personal session has
+          // exactly one reading language, and wrapping one sentence in
+          // `{"translations":{"fr":…}}` spends output tokens — and therefore
+          // time, on the critical path between someone speaking and someone
+          // reading — on a structure with one slot in it.
+          ...(single ? {} : { response_format: { type: 'json_object' } }),
+          // A translation is about as long as its input. Without a ceiling, one
+          // confused generation stalls the line for the full timeout.
+          max_tokens: Math.min(1200, 64 + estimateTokens(input.text) * 3 * targets.length),
+          temperature: 0,
         }),
         signal: AbortSignal.timeout(15_000),
       });
@@ -427,14 +442,21 @@ export class OpenAiTranslationProvider implements TranslationProvider {
       throw new LingoLiveError('TRANSLATION_FAILED', 'Translation provider returned no content');
     }
 
-    let parsed: { translations?: Record<string, string> };
-    try {
-      parsed = JSON.parse(content) as { translations?: Record<string, string> };
-    } catch {
-      throw new LingoLiveError('TRANSLATION_FAILED', 'Translation provider returned invalid JSON');
+    let translations: Record<string, string>;
+    if (single) {
+      const target = targets[0] as string;
+      translations = { [target]: content.trim() };
+    } else {
+      try {
+        const parsed = JSON.parse(content) as { translations?: Record<string, string> };
+        translations = parsed.translations ?? {};
+      } catch {
+        throw new LingoLiveError(
+          'TRANSLATION_FAILED',
+          'Translation provider returned invalid JSON',
+        );
+      }
     }
-
-    const translations = parsed.translations ?? {};
     const inputTokens = payload.usage?.prompt_tokens ?? estimateTokens(user);
     const outputTokens = payload.usage?.completion_tokens ?? estimateTokens(content);
     // Token usage is reported once for the whole call; splitting it evenly
