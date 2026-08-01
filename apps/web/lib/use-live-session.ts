@@ -88,6 +88,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const idleSecondsRef = useRef(0);
   const [readingLanguage, setReadingLanguage] = useState(options.readingLanguage);
+  const [renderTick, setRenderTick] = useState(0);
 
   const storeRef = useRef(new TranscriptStore());
   const clientRef = useRef<SessionClient | null>(null);
@@ -101,7 +102,28 @@ export function useLiveSession(options: UseLiveSessionOptions) {
 
   const refreshLines = useCallback(() => {
     setLines(storeRef.current.render(readingLanguage));
+    // Bumped on every event so a component rendering a DIFFERENT language —
+    // a Discuss tile — re-renders too. Without it those tiles would only
+    // update when the primary language happened to change.
+    setRenderTick((tick) => tick + 1);
   }, [readingLanguage]);
+
+  /**
+   * The transcript rendered in one specific language.
+   *
+   * Discuss puts several languages on screen at once: each tile is a different
+   * person reading the same conversation in their own. The hook's single
+   * `lines` cannot express that — it renders one language, and Discuss asked
+   * for `original`, so every tile showed untranslated text however many
+   * translations arrived.
+   */
+  const linesFor = useCallback(
+    (language: string): readonly RenderedLine[] => {
+      void renderTick;
+      return storeRef.current.render(language);
+    },
+    [renderTick],
+  );
 
   // Re-render the transcript when the reader changes language, without
   // refetching anything: translations already received are reused.
@@ -465,6 +487,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
   return {
     ...state,
     readingLanguage,
+    linesFor,
     start,
     pause,
     resume,

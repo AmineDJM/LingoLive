@@ -139,7 +139,9 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
           const blocked = !canSpeak(discussion, tile.id);
           const languageName =
             findLanguage(tile.readingLanguage)?.nativeName ?? tile.readingLanguage;
-          const tileLines = session.lines;
+          // Each tile is a different person reading the same conversation in
+          // their own language, so each renders the transcript for itself.
+          const tileLines = session.linesFor(tile.readingLanguage);
 
           return (
             <section
@@ -191,6 +193,8 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                     tileLines.slice(-3).map((line) => (
                       <li
                         key={line.id}
+                        data-testid="tile-line"
+                        data-original={line.isOriginal ? 'true' : 'false'}
                         className={cx(
                           'py-1',
                           line.isFinal ? 'text-transcript-final' : 'text-transcript-partial',

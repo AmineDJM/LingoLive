@@ -104,6 +104,45 @@ test.describe('Discuss', () => {
     });
   }
 
+  test('shows each tile the conversation in its own language', async ({ page }) => {
+    // Discuss draws every tile from one session over one socket. Both the
+    // delivery (a connection could subscribe to only one language) and the
+    // rendering (every tile drew the same single rendering, in `original`)
+    // collapsed that to one language, so Discuss transcribed and never
+    // appeared to translate.
+    await page.goto('/en/discuss');
+    await page.getByTestId('people-2').click();
+    await expect(page.getByTestId('discussion-canvas')).toBeVisible();
+
+    // Give the two tiles different languages.
+    await page.getByTestId('tile-language-1').click();
+    const picker = page.getByRole('dialog');
+    await picker.getByPlaceholder(/search/i).fill('french');
+    await picker
+      .getByRole('button', { name: /Français/ })
+      .first()
+      .click();
+
+    await page.getByTestId('tile-speak-0').click();
+
+    const first = page.getByTestId('tile-0').getByTestId('tile-line');
+    const second = page.getByTestId('tile-1').getByTestId('tile-line');
+    await expect(first.first()).toBeVisible({ timeout: 20_000 });
+    await expect(second.first()).toBeVisible({ timeout: 20_000 });
+
+    // Same utterance, two languages: the tiles must not read identically.
+    await expect
+      .poll(
+        async () => {
+          const a = await first.first().innerText();
+          const b = await second.first().innerText();
+          return a !== b && a.length > 0 && b.length > 0;
+        },
+        { timeout: 20_000 },
+      )
+      .toBe(true);
+  });
+
   test('rotates a single tile through 0/90/180/270 without touching the others', async ({
     page,
   }) => {
