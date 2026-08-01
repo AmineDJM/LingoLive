@@ -227,6 +227,43 @@ degraded before it leaves the machine and no provider-side setting recovers it.
 Echo cancellation has nothing to cancel either: this app plays no audio. Gain
 control stays on in both modes — it is what lifts a distant voice.
 
+### Translating while the sentence is still being written
+
+Speaking the language you are reading is instant — there is nothing to
+translate. Everything slow lives in that one call, so it gets three things:
+
+**It streams.** A translation takes about as long to generate as the sentence
+took to say, so holding it back until the last token doubles the gap between
+speaking and reading. Tokens are pushed to readers as `translation.partial` at
+most every 300 ms — fast enough to read as live, slow enough that a long
+sentence is a handful of frames rather than one per token.
+
+Streaming happens only when there is a **single** target language. With several,
+the reply is a JSON object keyed by language, and half of it is
+`{"translations":{"fr":"Bonjour to` — not a translation, and not parseable.
+Showing people fragments of a data structure is worse than making them wait.
+
+**One call per slot at a time.** Partials arrive several times a second and each
+websocket message is handled concurrently, so a growing sentence used to fire a
+translation per growth step, all at once. They returned in whatever order they
+finished and overwrote each other, which is a line that visibly jumps backwards
+— and the burst is what pushed the account into rate limiting, which is where
+multi-second delays came from. Newer text arriving mid-flight is held and
+translated when the current call returns; anything superseded before its turn is
+dropped, because nobody would have seen it.
+
+**A settled line is never un-settled.** A provisional translation can still be
+streaming when the final for the same utterance arrives. Each slot carries a
+generation counter, bumped when an utterance settles; a stream carrying an old
+generation stops broadcasting. Without it the line completes and then comes
+apart again.
+
+Two details that are silent when wrong, both covered by tests: an SSE frame can
+be split across reads, so a buffer carries the remainder forward — dropping it
+loses the last words of a translation with nothing logged; and usage is not
+reported on a streamed response unless `stream_options.include_usage` asks for
+it, and the cost ledger is not optional.
+
 ### CSP
 
 `connect-src` must name the provider origin. The SDP exchange is an ordinary

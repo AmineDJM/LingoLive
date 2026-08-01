@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { parseServerEnv } from '@lingolive/config';
 import { createSilentLogger } from '@lingolive/logging';
 import { LingoLiveError } from '@lingolive/contracts';
-import { OpenAiTranscriptionProvider, OpenAiTranslationProvider } from './openai-provider.js';
+import {
+  OpenAiTranscriptionProvider,
+  OpenAiTranslationProvider,
+  readTranslationStream,
+} from './openai-provider.js';
 import type { TranscriptionCredentialRequest } from './types.js';
 
 /**
@@ -447,5 +451,79 @@ describe('translation on the critical path', () => {
 
     expect(results).toEqual([]);
     expect(called).toBe(false);
+  });
+});
+
+describe('reading a streamed translation', () => {
+  function streamOf(chunks: string[]): Response {
+    const encoder = new TextEncoder();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+        controller.close();
+      },
+    });
+    return new Response(body, { status: 200 });
+  }
+
+  const frame = (content: string): string =>
+    `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n\n`;
+
+  it('announces the text so far as each piece arrives', async () => {
+    const seen: string[] = [];
+    const result = await readTranslationStream(
+      streamOf([frame('Bonjour'), frame(' tout'), frame(' le monde.'), 'data: [DONE]\n\n']),
+      (text) => seen.push(text),
+    );
+
+    expect(seen).toEqual(['Bonjour', 'Bonjour tout', 'Bonjour tout le monde.']);
+    expect(result.content).toBe('Bonjour tout le monde.');
+  });
+
+  it('survives a frame split across two reads', async () => {
+    // A chunk boundary lands wherever the network puts it, and half a frame is
+    // not JSON. Dropping it loses tokens silently — the translation simply
+    // comes out missing words, with nothing logged anywhere.
+    const whole = frame('Bonjour tout le monde.');
+    const cut = Math.floor(whole.length / 2);
+    const seen: string[] = [];
+    const result = await readTranslationStream(
+      streamOf([whole.slice(0, cut), whole.slice(cut), 'data: [DONE]\n\n']),
+      (text) => seen.push(text),
+    );
+
+    expect(result.content).toBe('Bonjour tout le monde.');
+    expect(seen).toEqual(['Bonjour tout le monde.']);
+  });
+
+  it('ignores [DONE] and malformed frames rather than ending the translation', async () => {
+    const seen: string[] = [];
+    const result = await readTranslationStream(
+      streamOf([frame('Bonjour'), 'data: {not json}\n\n', frame(' !'), 'data: [DONE]\n\n']),
+      (text) => seen.push(text),
+    );
+    expect(result.content).toBe('Bonjour !');
+  });
+
+  it('keeps the usage figures the cost ledger depends on', async () => {
+    const usageFrame = `data: ${JSON.stringify({
+      choices: [],
+      usage: { prompt_tokens: 42, completion_tokens: 7 },
+    })}\n\n`;
+    const result = await readTranslationStream(
+      streamOf([frame('Bonjour.'), usageFrame, 'data: [DONE]\n\n']),
+      () => {},
+    );
+
+    expect(result.usage?.promptTokens).toBe(42);
+    expect(result.usage?.completionTokens).toBe(7);
+  });
+
+  it('flushes a stream that ends without a trailing newline', async () => {
+    const result = await readTranslationStream(
+      streamOf([`data: ${JSON.stringify({ choices: [{ delta: { content: 'Bonjour.' } }] })}`]),
+      () => {},
+    );
+    expect(result.content).toBe('Bonjour.');
   });
 });

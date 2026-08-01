@@ -28,6 +28,14 @@ import { UsageService } from '../modules/usage.js';
  * a socket, not a model call.
  */
 
+/**
+ * How often a streaming translation is pushed to readers.
+ *
+ * Roughly three redraws a second: fast enough to read as live, slow enough
+ * that a long sentence is a handful of frames rather than one per token.
+ */
+const STREAM_FLUSH_MS = 300;
+
 interface ConnectionState {
   connection: Connection;
   sessionId: string;
@@ -54,6 +62,15 @@ interface ConnectionState {
    */
   provisionalInFlight: Set<string>;
   provisionalPending: Map<string, string>;
+  /**
+   * Bumped whenever a slot's utterance settles.
+   *
+   * A provisional translation can still be streaming when the final for the
+   * same utterance arrives. Its next frame would then overwrite settled text
+   * with an unfinished guess — a line that completes and then visibly comes
+   * apart again. Anything carrying an old generation is dropped instead.
+   */
+  provisionalGeneration: Map<string, number>;
   authenticated: boolean;
   /** Audio seconds this connection reported, reconciled at session end. */
   reportedAudioSeconds: number;
@@ -224,6 +241,7 @@ export async function registerRealtimeRoute(
         lastProvisional: new Map(),
         provisionalInFlight: new Set(),
         provisionalPending: new Map(),
+        provisionalGeneration: new Map(),
         authenticated: true,
         reportedAudioSeconds: 0,
       };
@@ -397,15 +415,21 @@ export async function registerRealtimeRoute(
         return;
       }
 
+      const generation = current.provisionalGeneration.get(slotKey) ?? 0;
+      const stillCurrent = (): boolean =>
+        (current.provisionalGeneration.get(slotKey) ?? 0) === generation;
+
       current.provisionalInFlight.add(slotKey);
       try {
         let text = event.text;
         for (;;) {
+          if (!stillCurrent()) break;
           await translateProvisional(current, {
             slotId: event.slotId ?? null,
             text,
             sourceLanguage: event.sourceLanguage,
             sequence: provisionalSequence,
+            stillCurrent,
           });
 
           // Whatever arrived while that call was out is now the truth. Anything
@@ -429,17 +453,50 @@ export async function registerRealtimeRoute(
         text: string;
         sourceLanguage: string | undefined;
         sequence: number;
+        stillCurrent: () => boolean;
       },
     ): Promise<void> {
       const targets = await resolveTargetLanguages(current, segment.slotId);
       if (targets.length === 0) return;
+
+      /**
+       * Push the translation out while it is still being written.
+       *
+       * A translation takes about as long to generate as the sentence took to
+       * say, so holding it back until the last token doubles the gap between
+       * someone speaking and someone reading. Throttled, because a token-per-
+       * frame websocket write floods the socket to redraw text faster than
+       * anyone reads it.
+       */
+      let lastFlush = 0;
+      const onDelta = ({
+        targetLanguage,
+        text,
+      }: {
+        targetLanguage: string;
+        text: string;
+      }): void => {
+        if (!segment.stillCurrent()) return;
+        const now = Date.now();
+        if (now - lastFlush < STREAM_FLUSH_MS) return;
+        lastFlush = now;
+        context.hub.broadcastToLanguage(current.sessionId, targetLanguage, {
+          type: 'translation.partial',
+          sessionId: current.sessionId,
+          sequence: segment.sequence,
+          targetLanguage,
+          text,
+        });
+      };
 
       try {
         const results = await context.ai.translation.translateSegment({
           text: segment.text,
           sourceLanguage: segment.sourceLanguage,
           targetLanguages: targets,
+          onDelta,
         });
+        if (!segment.stillCurrent()) return;
         for (const result of results) {
           context.hub.broadcastToLanguage(current.sessionId, result.targetLanguage, {
             type: 'translation.partial',
@@ -474,7 +531,12 @@ export async function registerRealtimeRoute(
         actor,
       });
 
-      current.lastProvisional.delete(event.slotId ?? '__main__');
+      const finalisedSlot = event.slotId ?? '__main__';
+      current.lastProvisional.delete(finalisedSlot);
+      current.provisionalGeneration.set(
+        finalisedSlot,
+        (current.provisionalGeneration.get(finalisedSlot) ?? 0) + 1,
+      );
 
       context.hub.broadcast(current.sessionId, { type: 'transcript.final', segment });
       context.metrics.recordLatency('realtime.final_segment', Date.now() - started);
@@ -483,6 +545,11 @@ export async function registerRealtimeRoute(
       if (targets.length === 0) return;
 
       const recentContext = await transcripts.recentContext(current.sessionId, 2);
+
+      // The settled translation is the one people are actually waiting on, so
+      // it streams too — as provisional text against this segment's sequence,
+      // replaced by the authoritative version the moment it is complete.
+      let lastFlush = 0;
       const translations = await transcripts.translateSegment({
         segmentId: segment.id,
         sessionId: current.sessionId,
@@ -491,6 +558,18 @@ export async function registerRealtimeRoute(
         targetLanguages: targets,
         actor,
         recentContext,
+        onDelta: ({ targetLanguage, text }) => {
+          const now = Date.now();
+          if (now - lastFlush < STREAM_FLUSH_MS) return;
+          lastFlush = now;
+          context.hub.broadcastToLanguage(current.sessionId, targetLanguage, {
+            type: 'translation.partial',
+            sessionId: current.sessionId,
+            sequence: segment.sequence,
+            targetLanguage,
+            text,
+          });
+        },
       });
 
       // One translation per language, delivered to everyone reading it.

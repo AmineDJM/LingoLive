@@ -126,6 +126,8 @@ export class TranscriptService {
     targetLanguages: readonly string[];
     actor: ActorIdentity;
     recentContext?: readonly string[];
+    /** Announces the translation as it is generated. See TranslationInput. */
+    onDelta?: (update: { targetLanguage: string; text: string }) => void;
   }): Promise<Translation[]> {
     const targets = dedupeTargetLanguages([...input.targetLanguages], input.sourceLanguage);
     if (targets.length === 0) return [];
@@ -164,6 +166,7 @@ export class TranscriptService {
           sourceLanguage: input.sourceLanguage ?? undefined,
           targetLanguages: uncached,
           context: input.recentContext ? { recentSegments: input.recentContext } : undefined,
+          ...(input.onDelta ? { onDelta: input.onDelta } : {}),
         });
         this.context.metrics.recordLatency('translation.final', Date.now() - started);
 

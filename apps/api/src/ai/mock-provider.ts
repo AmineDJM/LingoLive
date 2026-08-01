@@ -50,6 +50,18 @@ export class MockTranslationProvider implements TranslationProvider {
 
     return targets.map((targetLanguage) => {
       const translatedText = mockTranslate(input.text, targetLanguage);
+
+      // The mock streams too, so the delta path is exercised by the offline
+      // suite rather than only against a live provider. One target only, which
+      // is the same restriction the real provider has: a partial JSON envelope
+      // is not a translation.
+      if (input.onDelta && targets.length === 1) {
+        const words = translatedText.split(' ');
+        for (let i = 1; i <= words.length; i += 1) {
+          input.onDelta({ targetLanguage, text: words.slice(0, i).join(' ') });
+        }
+      }
+
       return {
         targetLanguage,
         translatedText,

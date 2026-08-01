@@ -305,6 +305,95 @@ async function describeProviderFailure(response: Response): Promise<ProviderFail
   }
 }
 
+interface TranslationUsage {
+  readonly promptTokens?: number | undefined;
+  readonly completionTokens?: number | undefined;
+}
+
+interface TranslationBody {
+  readonly content: string;
+  readonly usage?: TranslationUsage | undefined;
+}
+
+async function readTranslationBody(response: Response): Promise<TranslationBody> {
+  const payload = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+  return {
+    content: payload.choices?.[0]?.message?.content ?? '',
+    usage: {
+      promptTokens: payload.usage?.prompt_tokens,
+      completionTokens: payload.usage?.completion_tokens,
+    },
+  };
+}
+
+/**
+ * Reads a server-sent-event stream, announcing the text so far as it grows.
+ *
+ * Two things make this fiddlier than it looks, and both are silent when wrong:
+ * a chunk boundary can fall in the middle of a line, so a buffer has to carry
+ * the remainder to the next read; and the final `data: [DONE]` is not JSON.
+ * Getting either wrong loses tokens rather than throwing, which shows up as
+ * translations quietly missing their last few words.
+ */
+export async function readTranslationStream(
+  response: Response,
+  onText: (text: string) => void,
+): Promise<TranslationBody> {
+  const body = response.body;
+  if (!body) return { content: '' };
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let content = '';
+  let usage: TranslationUsage | undefined;
+
+  const emit = (line: string): void => {
+    if (!line.startsWith('data:')) return;
+    const data = line.slice(5).trim();
+    if (data === '' || data === '[DONE]') return;
+
+    let chunk: {
+      choices?: Array<{ delta?: { content?: string } }>;
+      usage?: { prompt_tokens?: number; completion_tokens?: number } | null;
+    };
+    try {
+      chunk = JSON.parse(data) as typeof chunk;
+    } catch {
+      // A malformed frame is not worth ending a live translation over.
+      return;
+    }
+
+    if (chunk.usage) {
+      usage = {
+        promptTokens: chunk.usage.prompt_tokens,
+        completionTokens: chunk.usage.completion_tokens,
+      };
+    }
+
+    const delta = chunk.choices?.[0]?.delta?.content;
+    if (typeof delta === 'string' && delta.length > 0) {
+      content += delta;
+      onText(content);
+    }
+  };
+
+  for await (const piece of body as unknown as AsyncIterable<Uint8Array>) {
+    buffer += decoder.decode(piece, { stream: true });
+    const lines = buffer.split('\n');
+    // The last element is whatever came after the final newline — possibly
+    // half a frame — and must wait for the next read.
+    buffer = lines.pop() ?? '';
+    for (const line of lines) emit(line.trim());
+  }
+  // Flush anything the stream ended on without a trailing newline.
+  if (buffer.trim()) emit(buffer.trim());
+
+  return { content, ...(usage ? { usage } : {}) };
+}
+
 export class OpenAiTranslationProvider implements TranslationProvider {
   readonly name = 'openai';
 
@@ -378,6 +467,17 @@ export class OpenAiTranslationProvider implements TranslationProvider {
       `Target languages: ${targetDescriptions}\n\n` +
       `Text:\n${input.text}`;
 
+    /**
+     * Stream only when the partial output is usable on its own.
+     *
+     * With one target the reply IS the translation, so every token can go
+     * straight to the reader. With several, the reply is a JSON object keyed by
+     * language: half of it is `{"translations":{"fr":"Bonjour to` — not a
+     * translation, and not parseable. Streaming that would mean showing people
+     * fragments of a data structure, so the multi-language path waits.
+     */
+    const streaming = single && typeof input.onDelta === 'function';
+
     let response: Response;
     try {
       response = await this.fetchFn(`${this.env.OPENAI_BASE_URL}/chat/completions`, {
@@ -392,6 +492,14 @@ export class OpenAiTranslationProvider implements TranslationProvider {
             { role: 'system', content: system },
             { role: 'user', content: user },
           ],
+          ...(streaming
+            ? {
+                stream: true,
+                // Usage is not reported on a streamed response unless it is
+                // asked for, and the cost ledger is not optional here.
+                stream_options: { include_usage: true },
+              }
+            : {}),
           // JSON only when there is something to key by. A personal session has
           // exactly one reading language, and wrapping one sentence in
           // `{"translations":{"fr":…}}` spends output tokens — and therefore
@@ -432,19 +540,19 @@ export class OpenAiTranslationProvider implements TranslationProvider {
       );
     }
 
-    const payload = (await response.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-      usage?: { prompt_tokens?: number; completion_tokens?: number };
-    };
+    const target = targets[0] as string;
+    const { content, usage } = streaming
+      ? await readTranslationStream(response, (text) =>
+          input.onDelta?.({ targetLanguage: target, text }),
+        )
+      : await readTranslationBody(response);
 
-    const content = payload.choices?.[0]?.message?.content;
     if (!content) {
       throw new LingoLiveError('TRANSLATION_FAILED', 'Translation provider returned no content');
     }
 
     let translations: Record<string, string>;
     if (single) {
-      const target = targets[0] as string;
       translations = { [target]: content.trim() };
     } else {
       try {
@@ -457,8 +565,8 @@ export class OpenAiTranslationProvider implements TranslationProvider {
         );
       }
     }
-    const inputTokens = payload.usage?.prompt_tokens ?? estimateTokens(user);
-    const outputTokens = payload.usage?.completion_tokens ?? estimateTokens(content);
+    const inputTokens = usage?.promptTokens ?? estimateTokens(user);
+    const outputTokens = usage?.completionTokens ?? estimateTokens(content);
     // Token usage is reported once for the whole call; splitting it evenly
     // across languages keeps per-language attribution honest in aggregate.
     const perTarget = Math.max(1, targets.length);

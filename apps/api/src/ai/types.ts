@@ -19,6 +19,19 @@ export interface TranslationInput {
   readonly sourceLanguage?: string | undefined;
   readonly targetLanguages: readonly string[];
   readonly context?: TranslationContext | undefined;
+  /**
+   * Called with the translation so far, as it is produced.
+   *
+   * The difference between waiting for a sentence and watching it arrive. A
+   * translation of a spoken sentence takes about as long to generate as it
+   * took to say, so holding it back until the last token doubles the delay
+   * between someone speaking and someone reading — and that delay is the
+   * product.
+   *
+   * Providers that cannot stream simply never call it; every caller must still
+   * handle the returned result as the authoritative version.
+   */
+  readonly onDelta?: ((update: { targetLanguage: string; text: string }) => void) | undefined;
 }
 
 export interface TranslationResult {

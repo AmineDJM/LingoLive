@@ -57,6 +57,17 @@ class TestClient {
     this.socket.send(JSON.stringify(event));
   }
 
+  /** Every event received, in arrival order. */
+  eventsInOrder(): ServerEvent[] {
+    return [...this.events];
+  }
+
+  eventsOfType<T extends ServerEvent['type']>(type: T): Array<Extract<ServerEvent, { type: T }>> {
+    return this.events.filter((event) => event.type === type) as Array<
+      Extract<ServerEvent, { type: T }>
+    >;
+  }
+
   /** Waits for the first event of a type, or throws after the timeout. */
   async waitFor<T extends ServerEvent['type']>(
     type: T,
@@ -263,6 +274,83 @@ describe('provisional translation under a fast speaker', () => {
       // superseded before its turn came and was skipped rather than sent.
       expect(translated.at(-1)).toBe(steps[2]);
       expect(translated.length).toBeLessThan(steps.length);
+    } finally {
+      harness.context.ai.translation.translateSegment = original;
+    }
+  });
+});
+
+describe('streaming a translation', () => {
+  it('shows the translation growing, then settles it', async () => {
+    const { realtimeToken } = await createListenSession();
+    const client = new TestClient(`${baseUrl}/realtime`);
+    await client.open();
+    client.send({ type: 'session.join', token: realtimeToken, lastSequence: 0 });
+    await client.waitFor('session.snapshot');
+
+    // The session reads English, so the speaker must be saying something else
+    // — a language that matches the reader needs no translation at all, which
+    // is exactly why that case was already instant.
+    client.send({
+      type: 'transcript.final',
+      text: 'Nous allons maintenant présenter les résultats du troisième trimestre.',
+      sourceLanguage: 'fr',
+    });
+    await client.waitFor('translation.final');
+    client.close();
+
+    // The reader saw the line arrive in pieces rather than appearing whole
+    // after the whole sentence had been generated.
+    const partials = client.eventsOfType('translation.partial');
+    expect(partials.length).toBeGreaterThan(0);
+
+    // And the authoritative version is what it ends on.
+    const settled = client.eventsOfType('translation.final');
+    expect(settled).toHaveLength(1);
+  });
+
+  it('never lets a streaming provisional overwrite a settled line', async () => {
+    // A provisional translation can still be mid-stream when the final for the
+    // same utterance lands. Its next frame would replace settled text with an
+    // unfinished guess: the line completes, then visibly comes apart.
+    const { realtimeToken } = await createListenSession();
+
+    const original = harness.context.ai.translation.translateSegment.bind(
+      harness.context.ai.translation,
+    );
+    harness.context.ai.translation.translateSegment = async (input) => {
+      if (input.onDelta) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        input.onDelta({ targetLanguage: 'en', text: 'STALE PROVISIONAL' });
+      }
+      return original(input);
+    };
+
+    try {
+      const client = new TestClient(`${baseUrl}/realtime`);
+      await client.open();
+      client.send({ type: 'session.join', token: realtimeToken, lastSequence: 0 });
+      await client.waitFor('session.snapshot');
+
+      client.send({
+        type: 'transcript.partial',
+        text: 'Nous allons maintenant présenter les résultats',
+        sourceLanguage: 'fr',
+      });
+      // The utterance settles while that provisional is still streaming.
+      client.send({
+        type: 'transcript.final',
+        text: 'Nous allons maintenant présenter les résultats du troisième trimestre.',
+        sourceLanguage: 'fr',
+      });
+      await client.waitFor('translation.final');
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      client.close();
+
+      const afterFinal = client
+        .eventsInOrder()
+        .slice(client.eventsInOrder().findIndex((e) => e.type === 'translation.final'));
+      expect(afterFinal.some((e) => e.type === 'translation.partial')).toBe(false);
     } finally {
       harness.context.ai.translation.translateSegment = original;
     }
