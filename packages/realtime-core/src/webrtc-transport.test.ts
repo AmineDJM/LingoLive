@@ -36,6 +36,7 @@ const config: TranscriptionConfig = {
   spokenLanguage: 'auto',
   vocabularyHints: [],
   noiseReduction: 'near_field',
+  idleAutoPauseSeconds: 0,
 };
 
 interface Harness {

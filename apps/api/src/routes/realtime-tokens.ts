@@ -130,6 +130,7 @@ export async function registerRealtimeTokenRoutes(
           spokenLanguage: body.spokenLanguage,
           vocabularyHints: body.vocabularyHints,
           noiseReduction,
+          idleAutoPauseSeconds: context.runtimeConfig.number('IDLE_AUTO_PAUSE_SECONDS'),
         },
         realtimeToken,
         realtimeUrl: realtimeUrl(context),

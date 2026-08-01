@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import { SessionStatus } from '@prisma/client';
+import { SessionKind, SessionStatus } from '@prisma/client';
 import { LingoLiveError, type ApiErrorCode } from '@lingolive/contracts';
 import {
   parseClientEvent,
@@ -203,7 +203,7 @@ export async function registerRealtimeRoute(
 
       const session = await context.prisma.session.findUnique({
         where: { id: claims.sessionId },
-        include: { _count: { select: { participants: true } } },
+        include: { _count: { select: { participants: true } }, slots: true },
       });
       if (!session) {
         fail('SESSION_NOT_FOUND', 'Session not found', false);
@@ -245,6 +245,20 @@ export async function registerRealtimeRoute(
         authenticated: true,
         reportedAudioSeconds: 0,
       };
+
+      /**
+       * A Discuss client renders every tile itself, over this one socket.
+       *
+       * Delivery is matched per language, so a connection registered under one
+       * language received only that tile's translations — the others were
+       * computed, billed and dropped. Discuss transcribed and never translated.
+       */
+      if (session.kind === SessionKind.PERSONAL_DISCUSS && session.slots.length > 0) {
+        context.hub.setLanguages(
+          connection.id,
+          session.slots.map((slot) => slot.readingLanguage),
+        );
+      }
 
       // Replay exactly the gap: everything strictly after what the client
       // already rendered, translated for its reading language.
@@ -291,6 +305,22 @@ export async function registerRealtimeRoute(
         case 'language.set': {
           context.hub.setLanguage(connectionId, event.language);
           current.connection.targetLanguage = event.language;
+          // A tile changed language: re-register the whole set, or the new one
+          // is translated and never delivered.
+          if (event.slotId) {
+            const withSlots = await context.prisma.session.findUnique({
+              where: { id: current.sessionId },
+              include: { slots: true },
+            });
+            if (withSlots && withSlots.slots.length > 0) {
+              context.hub.setLanguages(
+                connectionId,
+                withSlots.slots.map((slot) =>
+                  slot.id === event.slotId ? event.language : slot.readingLanguage,
+                ),
+              );
+            }
+          }
           await context.prisma.participant
             .update({
               where: { id: current.participantId },

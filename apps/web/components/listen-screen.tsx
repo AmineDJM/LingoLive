@@ -185,6 +185,19 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
         </Alert>
       ) : null}
 
+      {session.autoPaused ? (
+        <Alert tone="info" title={t.t('listen.idlePaused')} testId="idle-paused">
+          {t.t('listen.idlePausedDetail')}
+          <Button
+            className="mt-3"
+            onClick={() => void session.resumeFromIdle()}
+            data-testid="resume-from-idle"
+          >
+            {t.t('listen.idleResume')}
+          </Button>
+        </Alert>
+      ) : null}
+
       {session.connectionStatus === 'reconnecting' ? (
         <Alert tone="warning">{t.t('errors.network')}</Alert>
       ) : null}

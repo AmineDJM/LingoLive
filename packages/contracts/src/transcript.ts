@@ -94,6 +94,13 @@ export function hashText(input: string): string {
  * Translating every delta would be both expensive and visually unstable
  * (flicker). We wait for either sentence-ending punctuation or a meaningful
  * amount of new text since the previous provisional translation.
+ *
+ * The thresholds are lower than they look like they should be, because they no
+ * longer control cost. Only one provisional translation runs per slot at a
+ * time, so the call rate is bounded by how fast the provider answers, not by
+ * how often this returns true — a permissive gate just means the single slot is
+ * always working on the newest text instead of sitting idle waiting to clear a
+ * bar. They were 12 and 25, chosen when every delta could start its own call.
  */
 export function shouldTranslateProvisional(input: {
   text: string;
@@ -102,8 +109,8 @@ export function shouldTranslateProvisional(input: {
   minChars?: number;
 }): boolean {
   const { text, lastTranslatedText } = input;
-  const minChars = input.minChars ?? 12;
-  const minCharsDelta = input.minCharsDelta ?? 25;
+  const minChars = input.minChars ?? 8;
+  const minCharsDelta = input.minCharsDelta ?? 14;
   const trimmed = text.trim();
   if (trimmed.length < minChars) return false;
   if (!lastTranslatedText) return true;

@@ -66,6 +66,9 @@ export const ptBR: Messages = {
   },
 
   listen: {
+    idlePaused: 'Microfone pausado',
+    idlePausedDetail: 'Ninguém fala há um tempo. O microfone foi liberado para não consumir à toa.',
+    idleResume: 'Retomar a escuta',
     demoMode: 'Modo demonstração',
     demoModeDetail:
       'Este servidor não tem um serviço de transcrição configurado. O texto abaixo é um exemplo, não o que está sendo dito ao seu redor.',

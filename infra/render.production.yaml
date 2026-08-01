@@ -129,6 +129,9 @@ services:
         value: gpt-5.6-luna
       - key: REALTIME_TOKEN_TTL_SECONDS
         value: '60'
+      # See infra/render.yaml. 0 disables the automatic release.
+      - key: IDLE_AUTO_PAUSE_SECONDS
+        value: '30'
       - key: OPENAI_REALTIME_SESSION_PATH
         value: /client_secrets
       # Where the browser POSTs its SDP offer, used verbatim. Do NOT add

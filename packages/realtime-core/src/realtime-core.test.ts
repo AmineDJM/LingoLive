@@ -637,6 +637,7 @@ describe('mock transport', () => {
       spokenLanguage: 'fr',
       vocabularyHints: [],
       noiseReduction: 'near_field',
+      idleAutoPauseSeconds: 0,
     });
     await transport.startAudio();
 
@@ -674,6 +675,7 @@ describe('mock transport', () => {
       spokenLanguage: 'en',
       vocabularyHints: [],
       noiseReduction: 'near_field',
+      idleAutoPauseSeconds: 0,
     });
     await transport.startAudio();
     await vi.advanceTimersByTimeAsync(1000);

@@ -20,6 +20,18 @@ export interface Connection {
   readonly participantId: string;
   readonly role: string;
   targetLanguage: string | null;
+  /**
+   * Every language this connection is rendering, not just its primary one.
+   *
+   * Discuss puts two to four tiles on ONE device over ONE socket, each reading
+   * a different language. Matching delivery against a single `targetLanguage`
+   * meant the other tiles' translations were computed, paid for, and then
+   * dropped on the floor — Discuss transcribed but never translated.
+   *
+   * Empty means "fall back to `targetLanguage`", which is every Listen and
+   * Business viewer.
+   */
+  targetLanguages?: Set<string>;
   readonly connectedAt: Date;
   lastHeartbeatAt: Date;
   lastSequenceSent: number;
@@ -28,6 +40,12 @@ export interface Connection {
   readonly networkPrefix: string | null;
   send(event: ServerEvent): void;
   close(code?: number, reason?: string): void;
+}
+
+/** Does this connection render `language`? Case-insensitive, set or primary. */
+function readsLanguage(connection: Connection, normalized: string): boolean {
+  if (connection.targetLanguages?.size) return connection.targetLanguages.has(normalized);
+  return (connection.targetLanguage ?? '').toLowerCase() === normalized;
 }
 
 export interface RoomStats {
@@ -54,6 +72,8 @@ export interface RealtimeHub {
   allConnections(): Connection[];
   rooms(): RoomStats[];
   setLanguage(connectionId: string, language: string): void;
+  /** Replaces every language a connection renders — Discuss draws several. */
+  setLanguages(connectionId: string, languages: readonly string[]): void;
   heartbeat(connectionId: string): void;
   /** Disconnect everyone in a room, e.g. when the organizer ends it. */
   closeRoom(sessionId: string, event: ServerEvent): void;
@@ -187,9 +207,7 @@ export class InProcessRealtimeHub implements RealtimeHub {
   private localBroadcastToLanguage(sessionId: string, language: string, event: ServerEvent): void {
     const normalized = language.toLowerCase();
     for (const connection of this.connectionsFor(sessionId)) {
-      if ((connection.targetLanguage ?? '').toLowerCase() === normalized) {
-        this.deliver(connection, event);
-      }
+      if (readsLanguage(connection, normalized)) this.deliver(connection, event);
     }
   }
 
@@ -214,6 +232,7 @@ export class InProcessRealtimeHub implements RealtimeHub {
   languagesFor(sessionId: string): string[] {
     const languages = new Set<string>();
     for (const connection of this.connectionsFor(sessionId)) {
+      for (const language of connection.targetLanguages ?? []) languages.add(language);
       if (connection.targetLanguage) languages.add(connection.targetLanguage);
     }
     return [...languages];
@@ -257,6 +276,13 @@ export class InProcessRealtimeHub implements RealtimeHub {
   setLanguage(connectionId: string, language: string): void {
     const connection = this.connections.get(connectionId);
     if (connection) connection.targetLanguage = language;
+  }
+
+  /** Replaces the full set of languages a connection renders. */
+  setLanguages(connectionId: string, languages: readonly string[]): void {
+    const connection = this.connections.get(connectionId);
+    if (!connection) return;
+    connection.targetLanguages = new Set(languages.map((language) => language.toLowerCase()));
   }
 
   heartbeat(connectionId: string): void {

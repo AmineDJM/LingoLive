@@ -357,6 +357,64 @@ describe('streaming a translation', () => {
   });
 });
 
+describe('Discuss', () => {
+  it('delivers every tile its own translation over the one socket', async () => {
+    // Discuss draws two to four tiles on ONE device over ONE connection, each
+    // reading a different language. Delivery is matched per language, so a
+    // connection registered under a single language received only that tile's
+    // translations — the rest were computed, billed, and dropped. Discuss
+    // transcribed and never translated.
+    const guest = await registerGuest(harness.app);
+    const created = await harness.app.inject({
+      method: 'POST',
+      url: '/api/v1/sessions',
+      headers: authHeaders(guest.token),
+      payload: {
+        kind: 'PERSONAL_DISCUSS',
+        readingLanguage: 'fr',
+        slots: [
+          { position: 0, readingLanguage: 'fr', rotation: 0 },
+          { position: 1, readingLanguage: 'en', rotation: 180 },
+        ],
+      },
+    });
+    const sessionId = created.json().session.id;
+
+    const tokenResponse = await harness.app.inject({
+      method: 'POST',
+      url: '/api/v1/realtime/transcription-token',
+      headers: authHeaders(guest.token),
+      payload: {
+        sessionId,
+        platform: 'web',
+        preferredTransport: 'auto',
+        spokenLanguage: 'auto',
+      },
+    });
+
+    const client = new TestClient(`${baseUrl}/realtime`);
+    await client.open();
+    client.send({ type: 'session.join', token: tokenResponse.json().realtimeToken });
+    await client.waitFor('session.snapshot');
+
+    // Spanish is neither tile's language, so both must be translated.
+    client.send({
+      type: 'transcript.final',
+      text: 'Hola a todos, gracias por venir.',
+      sourceLanguage: 'es',
+    });
+    await client.waitFor('translation.final');
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    client.close();
+
+    const languages = new Set(
+      client.eventsOfType('translation.final').map((event) => event.translation.targetLanguage),
+    );
+    expect(languages.has('fr')).toBe(true);
+    expect(languages.has('en')).toBe(true);
+  });
+});
+
 describe('realtime session', () => {
   it('sends a snapshot on join and streams partial then final text', async () => {
     const { realtimeToken } = await createListenSession();

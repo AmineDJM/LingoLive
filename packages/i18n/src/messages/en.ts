@@ -72,6 +72,10 @@ export const en = {
   },
 
   listen: {
+    idlePaused: 'Microphone paused',
+    idlePausedDetail:
+      'Nothing has been said for a while. The microphone was released so it costs nothing while idle.',
+    idleResume: 'Resume listening',
     demoMode: 'Demonstration mode',
     demoModeDetail:
       'This server has no transcription service configured. The text below is a sample, not what is being said around you.',

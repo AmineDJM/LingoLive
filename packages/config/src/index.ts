@@ -137,6 +137,18 @@ export const serverEnvSchema = z
      */
     OPENAI_REALTIME_SDP_PATH: z.string().default('/calls'),
     REALTIME_TOKEN_TTL_SECONDS: intFromEnv(60, 10, 600),
+    /**
+     * Silence, in seconds, after which a client releases the microphone and the
+     * provider session on its own.
+     *
+     * Audio dominates the bill — roughly 93% of it — and a device left on a
+     * table between two conversations costs the same as one being listened to.
+     * The session itself survives; only the expensive half is released, and the
+     * user is told and offered a one-tap resume.
+     *
+     * 0 disables it.
+     */
+    IDLE_AUTO_PAUSE_SECONDS: intFromEnv(30, 0, 3600),
 
     AUTH_PROVIDER: z.enum(['local', 'oidc']).default('local'),
     AUTH_SECRET: z.string().min(16).default('dev-only-auth-secret-change-me-please-32c'),

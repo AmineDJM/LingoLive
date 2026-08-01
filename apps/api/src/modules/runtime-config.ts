@@ -29,6 +29,7 @@ export const OVERRIDABLE_KEYS = [
   'BUSINESS_CODE_TTL_HOURS',
   'ANALYTICS_ENABLED',
   'REALTIME_TOKEN_TTL_SECONDS',
+  'IDLE_AUTO_PAUSE_SECONDS',
 ] as const;
 
 export type OverridableKey = (typeof OVERRIDABLE_KEYS)[number];

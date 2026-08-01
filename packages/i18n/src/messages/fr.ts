@@ -67,6 +67,10 @@ export const fr: Messages = {
   },
 
   listen: {
+    idlePaused: 'Micro en pause',
+    idlePausedDetail:
+      'Aucune parole depuis un moment. Le micro a été coupé pour ne pas consommer inutilement.',
+    idleResume: 'Reprendre l’écoute',
     demoMode: 'Mode démonstration',
     demoModeDetail:
       'Ce serveur n’a pas de service de transcription configuré. Le texte ci-dessous est un exemple, pas ce qui est dit autour de vous.',

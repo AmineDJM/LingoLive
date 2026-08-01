@@ -224,6 +224,18 @@ export const transcriptionConfigSchema = z.object({
   /** Words/names to bias recognition toward, when the model supports it. */
   vocabularyHints: z.array(z.string()).max(100).default([]),
   noiseReduction: z.enum(['none', 'near_field', 'far_field']).default('near_field'),
+  /**
+   * Seconds of silence after which the client releases the microphone and the
+   * provider session.
+   *
+   * Audio is ~93% of what a session costs, and a phone left on a table between
+   * two conversations bills exactly as much as one being listened to. Zero
+   * disables it.
+   *
+   * Server-side so it is tunable without releasing a client, like the rest of
+   * the audio profile.
+   */
+  idleAutoPauseSeconds: z.number().int().min(0).default(0),
 });
 export type TranscriptionConfig = z.infer<typeof transcriptionConfigSchema>;
 

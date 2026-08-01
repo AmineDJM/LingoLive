@@ -16,6 +16,7 @@ import type {
   RealtimeTranscriptionTransport,
   ServerEvent,
   TranscriptionConfig,
+  TranscriptionTokenResponse,
 } from '@lingolive/contracts';
 import { createBrowserTransportDependencies } from './browser-audio';
 import { createApiClient, ensureToken } from './client';
@@ -63,6 +64,13 @@ export interface LiveSessionState {
    * like it worked while transcribing nothing anyone said.
    */
   readonly isDemoTranscription: boolean;
+  /**
+   * True when silence released the microphone and the provider session.
+   *
+   * The LingoLive session, its transcript and its socket are all still alive —
+   * only the expensive half is gone, and `resumeFromIdle` brings it back.
+   */
+  readonly autoPaused: boolean;
 }
 
 export function useLiveSession(options: UseLiveSessionOptions) {
@@ -76,6 +84,9 @@ export function useLiveSession(options: UseLiveSessionOptions) {
   const [errorReference, setErrorReference] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState('idle');
   const [isDemoTranscription, setDemoTranscription] = useState(false);
+  const [autoPaused, setAutoPaused] = useState(false);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleSecondsRef = useRef(0);
   const [readingLanguage, setReadingLanguage] = useState(options.readingLanguage);
 
   const storeRef = useRef(new TranscriptStore());
@@ -156,6 +167,118 @@ export function useLiveSession(options: UseLiveSessionOptions) {
     [dispatch, refreshLines],
   );
 
+  const clearIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Releases the microphone and the provider session after a stretch of silence.
+   *
+   * Audio is roughly 93% of what a session costs, and a device left on a table
+   * between two conversations bills exactly like one being listened to. Muting
+   * the track is not enough — a muted WebRTC track still holds the session open
+   * — so the transport is torn down and the browser's recording indicator goes
+   * out, which is also the honest signal that nothing is being heard.
+   *
+   * The LingoLive session, its transcript and its socket all survive. Only the
+   * expensive half goes.
+   */
+  const releaseForIdle = useCallback(async () => {
+    clearIdleTimer();
+    const transport = transportRef.current;
+    transportRef.current = null;
+    setAutoPaused(true);
+    dispatch({ type: 'PAUSED' });
+    clientRef.current?.send({ type: 'session.pause' });
+    await transport?.stopAudio();
+    await transport?.disconnect();
+  }, [clearIdleTimer, dispatch]);
+
+  /** Restarts the idle countdown. Called on every sign of speech. */
+  const noteSpeech = useCallback(() => {
+    if (idleSecondsRef.current <= 0) return;
+    clearIdleTimer();
+    idleTimerRef.current = setTimeout(() => {
+      void releaseForIdle();
+    }, idleSecondsRef.current * 1000);
+  }, [clearIdleTimer, releaseForIdle]);
+
+  /**
+   * Wires a transcription transport onto the live session and opens the mic.
+   *
+   * Shared by the initial start and by resuming from an idle pause, so the two
+   * cannot drift — the resume path is the one nobody exercises by accident, and
+   * a second copy of this is exactly where it would rot.
+   */
+  const attachTranscription = useCallback(
+    async (tokenResponse: TranscriptionTokenResponse) => {
+      const client = clientRef.current;
+      if (!client) return;
+
+      // The transport is chosen by the server, from whether a provider is
+      // configured. The client does not decide this and must not: a build that
+      // guessed would either ask for the microphone when there is nothing to
+      // send it to, or play scripted speech on a deployment paying for a real
+      // one.
+      setDemoTranscription(tokenResponse.config.transport === 'mock');
+      idleSecondsRef.current = tokenResponse.config.idleAutoPauseSeconds;
+
+      const transport: RealtimeTranscriptionTransport =
+        tokenResponse.config.transport === 'mock'
+          ? new MockTranscriptionTransport({
+              language: options.spokenLanguage === 'auto' ? undefined : options.spokenLanguage,
+              loop: true,
+            })
+          : new WebRtcTranscriptionTransport(createBrowserTransportDependencies());
+
+      transport.onError((transportError) => {
+        setErrorCode(transportError.code);
+        setErrorReference(referenceFor(transportError, transportError.code));
+        dispatch({
+          type: 'ERROR',
+          code: transportError.code,
+          message: transportError.message,
+          retryable: transportError.retryable,
+        });
+      });
+      transportRef.current = transport;
+
+      transport.onPartial((partial) => {
+        noteSpeech();
+        client.send({
+          type: 'transcript.partial',
+          text: partial.text,
+          ...(partial.sourceLanguage ? { sourceLanguage: partial.sourceLanguage } : {}),
+          ...(activeSlotRef.current ? { slotId: activeSlotRef.current } : {}),
+        });
+      });
+      transport.onFinal((final) => {
+        noteSpeech();
+        client.send({
+          type: 'transcript.final',
+          text: final.text,
+          ...(final.sourceLanguage ? { sourceLanguage: final.sourceLanguage } : {}),
+          ...(final.clientSegmentId ? { clientSegmentId: final.clientSegmentId } : {}),
+          ...(activeSlotRef.current ? { slotId: activeSlotRef.current } : {}),
+        });
+      });
+
+      await transport.connect(tokenResponse.config as TranscriptionConfig);
+
+      if (options.autoStartAudio !== false) {
+        await transport.startAudio();
+        dispatch({ type: 'AUDIO_STARTED' });
+        // Silence from the very beginning counts too: a session started and
+        // then forgotten is exactly the case this exists for.
+        noteSpeech();
+      }
+    },
+    [dispatch, noteSpeech, options.autoStartAudio, options.spokenLanguage],
+  );
+
   const start = useCallback(async () => {
     setErrorCode(null);
     setErrorReference(null);
@@ -214,52 +337,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
       // The client does not decide this and must not: a build that guessed
       // would either ask for the microphone when there is nothing to send it
       // to, or play scripted speech on a deployment paying for a real one.
-      setDemoTranscription(tokenResponse.config.transport === 'mock');
-
-      const transport: RealtimeTranscriptionTransport =
-        tokenResponse.config.transport === 'mock'
-          ? new MockTranscriptionTransport({
-              language: options.spokenLanguage === 'auto' ? undefined : options.spokenLanguage,
-              loop: true,
-            })
-          : new WebRtcTranscriptionTransport(createBrowserTransportDependencies());
-
-      transport.onError((transportError) => {
-        setErrorCode(transportError.code);
-        setErrorReference(referenceFor(transportError, transportError.code));
-        dispatch({
-          type: 'ERROR',
-          code: transportError.code,
-          message: transportError.message,
-          retryable: transportError.retryable,
-        });
-      });
-      transportRef.current = transport;
-
-      transport.onPartial((partial) => {
-        client.send({
-          type: 'transcript.partial',
-          text: partial.text,
-          ...(partial.sourceLanguage ? { sourceLanguage: partial.sourceLanguage } : {}),
-          ...(activeSlotRef.current ? { slotId: activeSlotRef.current } : {}),
-        });
-      });
-      transport.onFinal((final) => {
-        client.send({
-          type: 'transcript.final',
-          text: final.text,
-          ...(final.sourceLanguage ? { sourceLanguage: final.sourceLanguage } : {}),
-          ...(final.clientSegmentId ? { clientSegmentId: final.clientSegmentId } : {}),
-          ...(activeSlotRef.current ? { slotId: activeSlotRef.current } : {}),
-        });
-      });
-
-      await transport.connect(tokenResponse.config as TranscriptionConfig);
-
-      if (options.autoStartAudio !== false) {
-        await transport.startAudio();
-        dispatch({ type: 'AUDIO_STARTED' });
-      }
+      await attachTranscription(tokenResponse);
     } catch (error) {
       const code = errorCodeOf(error);
       setErrorCode(code);
@@ -267,6 +345,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
       dispatch({ type: 'ERROR', code, message: 'Could not start the session', retryable: true });
     }
   }, [
+    attachTranscription,
     dispatch,
     handleServerEvent,
     options.kind,
@@ -276,7 +355,38 @@ export function useLiveSession(options: UseLiveSessionOptions) {
     options.spokenLanguage,
   ]);
 
+  /**
+   * Brings the microphone back after an idle pause.
+   *
+   * A fresh credential, because the one the session started with is long
+   * expired by design — they last about a minute. The LingoLive session and its
+   * transcript are untouched, so this continues the same conversation rather
+   * than starting another one.
+   */
+  const resumeFromIdle = useCallback(async () => {
+    if (!sessionId) return;
+    setErrorCode(null);
+    setErrorReference(null);
+    try {
+      const tokenResponse = await createApiClient().requestTranscriptionToken({
+        sessionId,
+        platform: 'web',
+        preferredTransport: 'auto',
+        spokenLanguage: options.spokenLanguage ?? 'auto',
+        vocabularyHints: [],
+      });
+      setAutoPaused(false);
+      clientRef.current?.send({ type: 'session.resume' });
+      await attachTranscription(tokenResponse);
+    } catch (error) {
+      const code = errorCodeOf(error);
+      setErrorCode(code);
+      setErrorReference(referenceFor(error, code));
+    }
+  }, [attachTranscription, options.spokenLanguage, sessionId]);
+
   const pause = useCallback(async () => {
+    clearIdleTimer();
     await transportRef.current?.pause();
     clientRef.current?.send({ type: 'session.pause' });
     dispatch({ type: 'PAUSED' });
@@ -289,13 +399,14 @@ export function useLiveSession(options: UseLiveSessionOptions) {
   }, [dispatch]);
 
   const end = useCallback(async () => {
+    clearIdleTimer();
     dispatch({ type: 'END_REQUESTED' });
     await transportRef.current?.stopAudio();
     await transportRef.current?.disconnect();
     clientRef.current?.send({ type: 'session.end' });
     clientRef.current?.close();
     dispatch({ type: 'ENDED' });
-  }, [dispatch]);
+  }, [clearIdleTimer, dispatch]);
 
   const startSpeaking = useCallback((slotId: string) => {
     activeSlotRef.current = slotId;
@@ -318,6 +429,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
   // stream, and a ghost stream is a bill.
   useEffect(() => {
     return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
       void transportRef.current?.disconnect();
       clientRef.current?.close();
     };
@@ -334,6 +446,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
       errorReference,
       connectionStatus,
       isDemoTranscription,
+      autoPaused,
     }),
     [
       context,
@@ -345,6 +458,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
       errorReference,
       connectionStatus,
       isDemoTranscription,
+      autoPaused,
     ],
   );
 
@@ -354,6 +468,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
     start,
     pause,
     resume,
+    resumeFromIdle,
     end,
     startSpeaking,
     stopSpeaking,

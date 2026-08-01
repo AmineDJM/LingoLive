@@ -162,6 +162,12 @@ services:
         value: gpt-5.6-luna
       - key: REALTIME_TOKEN_TTL_SECONDS
         value: '60'
+      # Silence, in seconds, after which a client releases the microphone and
+      # the provider session on its own. Audio is ~93% of what a session costs,
+      # and a device left on a table bills like one being listened to. The
+      # session survives; the user is told and gets a one-tap resume. 0 is off.
+      - key: IDLE_AUTO_PAUSE_SECONDS
+        value: '30'
       # If starting a session returns 404 from the provider, the other realtime
       # entry point is /transcription_sessions. Changeable here, no deploy.
       - key: OPENAI_REALTIME_SESSION_PATH
