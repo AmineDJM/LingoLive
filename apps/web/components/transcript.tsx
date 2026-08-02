@@ -66,7 +66,7 @@ export function Transcript({
         data-testid="transcript"
       >
         {lines.length === 0 ? (
-          <p className="py-12 text-center text-[17px] text-ink-muted">{emptyLabel}</p>
+          <p className="py-12 text-center text-body text-ink-muted">{emptyLabel}</p>
         ) : (
           <ol className="space-y-5">
             {lines.map((line) => (
@@ -110,7 +110,7 @@ export function Transcript({
           type="button"
           onClick={scrollToLive}
           data-testid="back-to-live"
-          className="absolute bottom-4 start-1/2 -translate-x-1/2 rounded-[var(--radius-full)] bg-primary px-5 py-3 text-[15px] font-semibold text-on-primary shadow-[var(--shadow-raised)]"
+          className="absolute bottom-4 start-1/2 -translate-x-1/2 rounded-[var(--radius-full)] bg-primary px-5 py-3 text-body-small font-semibold text-on-primary shadow-[var(--shadow-raised)]"
         >
           ↓ {backToLiveLabel}
         </button>

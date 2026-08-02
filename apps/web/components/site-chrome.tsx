@@ -25,26 +25,26 @@ export function SiteHeader({ locale }: { locale: UiLocale }) {
       >
         <Link href={home} className="flex items-center gap-2 font-bold text-ink" data-touch-target>
           <LingoLiveMark />
-          <span className="text-[17px]">LingoLive</span>
+          <span className="text-body">LingoLive</span>
         </Link>
 
         <div className="ms-auto flex items-center gap-1 sm:gap-2">
           <Link
             href={localizedPath(locale, 'how-it-works')}
-            className="hidden rounded-[var(--radius-md)] px-3 py-2 text-[15px] font-medium text-ink-secondary hover:text-ink sm:block"
+            className="hidden rounded-[var(--radius-md)] px-3 py-2 text-body-small font-medium text-ink-secondary hover:text-ink sm:block"
           >
             {getPageCopy('how-it-works', locale)?.h1}
           </Link>
           <Link
             href={localizedPath(locale, 'pricing')}
-            className="hidden rounded-[var(--radius-md)] px-3 py-2 text-[15px] font-medium text-ink-secondary hover:text-ink sm:block"
+            className="hidden rounded-[var(--radius-md)] px-3 py-2 text-body-small font-medium text-ink-secondary hover:text-ink sm:block"
           >
             {getPageCopy('pricing', locale)?.h1}
           </Link>
           <LanguageSwitcher locale={locale} label={t.t('marketing.footerLanguage')} />
           <Link
             href={localizedPath(locale, 'listen')}
-            className="inline-flex items-center rounded-[var(--radius-md)] bg-primary px-4 py-2.5 text-[15px] font-semibold text-on-primary hover:bg-primary-hover"
+            className="inline-flex items-center rounded-[var(--radius-md)] bg-primary px-4 py-2.5 text-body-small font-semibold text-on-primary hover:bg-primary-hover"
             data-touch-target
           >
             {t.t('home.listenTitle')}
@@ -82,7 +82,7 @@ export function SiteFooter({ locale }: { locale: UiLocale }) {
                     <li key={path}>
                       <Link
                         href={localizedPath(locale, path)}
-                        className="text-[15px] text-ink-secondary hover:text-ink"
+                        className="text-body-small text-ink-secondary hover:text-ink"
                       >
                         {copy.h1}
                       </Link>
@@ -95,10 +95,10 @@ export function SiteFooter({ locale }: { locale: UiLocale }) {
         </div>
 
         <div className="mt-12 border-t border-border pt-8">
-          <p className="max-w-2xl text-[14px] leading-relaxed text-ink-muted">
+          <p className="max-w-2xl text-label leading-relaxed text-ink-muted">
             {t.t('marketing.notAnInterpreter')}
           </p>
-          <p className="mt-4 text-[14px] text-ink-muted">
+          <p className="mt-4 text-label text-ink-muted">
             © {new Date().getUTCFullYear()} LingoLive
           </p>
         </div>

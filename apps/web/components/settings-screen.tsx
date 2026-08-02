@@ -86,7 +86,7 @@ export function SettingsScreen({ locale }: { locale: UiLocale }) {
         </h2>
         <Card className="space-y-4">
           <div>
-            <p className="mb-2 text-[15px] font-medium text-ink">
+            <p className="mb-2 text-body-small font-medium text-ink">
               {t.t('settings.interfaceLanguage')}
             </p>
             <ul className="flex flex-wrap gap-2">
@@ -97,8 +97,8 @@ export function SettingsScreen({ locale }: { locale: UiLocale }) {
                     hrefLang={definition.htmlLang}
                     className={
                       definition.locale === locale
-                        ? 'inline-flex rounded-[var(--radius-full)] bg-primary px-4 py-2 text-[14px] font-semibold text-on-primary'
-                        : 'inline-flex rounded-[var(--radius-full)] border border-border px-4 py-2 text-[14px] text-ink'
+                        ? 'inline-flex rounded-[var(--radius-full)] bg-primary px-4 py-2 text-label font-semibold text-on-primary'
+                        : 'inline-flex rounded-[var(--radius-full)] border border-border px-4 py-2 text-label text-ink'
                     }
                   >
                     {definition.nativeName}
@@ -109,7 +109,7 @@ export function SettingsScreen({ locale }: { locale: UiLocale }) {
           </div>
 
           <div>
-            <p className="mb-2 text-[15px] font-medium text-ink">
+            <p className="mb-2 text-body-small font-medium text-ink">
               {t.t('settings.readingLanguage')}
             </p>
             <Button
@@ -124,7 +124,9 @@ export function SettingsScreen({ locale }: { locale: UiLocale }) {
           </div>
 
           <div>
-            <p className="mb-2 text-[15px] font-medium text-ink">{t.t('settings.appearance')}</p>
+            <p className="mb-2 text-body-small font-medium text-ink">
+              {t.t('settings.appearance')}
+            </p>
             <div className="flex gap-2">
               {(['system', 'light', 'dark'] as const).map((option) => (
                 <Button
@@ -149,7 +151,7 @@ export function SettingsScreen({ locale }: { locale: UiLocale }) {
         </h2>
         <Card>
           <label className="block">
-            <span className="text-[15px] font-medium text-ink">
+            <span className="text-body-small font-medium text-ink">
               {t.t('settings.transcriptSize')}
             </span>
             <input
@@ -177,9 +179,9 @@ export function SettingsScreen({ locale }: { locale: UiLocale }) {
           {t.t('settings.sectionPrivacy')}
         </h2>
         <Card className="space-y-3">
-          <p className="text-[15px] text-ink-secondary">{t.t('settings.autoSaveHint')}</p>
+          <p className="text-body-small text-ink-secondary">{t.t('settings.autoSaveHint')}</p>
           {me ? (
-            <p className="text-[15px] text-ink">
+            <p className="text-body-small text-ink">
               {t.t('settings.usageValue', {
                 used: Math.round(me.quota.minutesUsedThisPeriod),
                 total: me.quota.minutesPerMonth,
@@ -189,13 +191,13 @@ export function SettingsScreen({ locale }: { locale: UiLocale }) {
           <div className="flex flex-wrap gap-2">
             <Link
               href={localizedPath(locale, 'privacy')}
-              className="text-[15px] font-medium text-primary-text underline"
+              className="text-body-small font-medium text-primary-text underline"
             >
               {t.t('settings.privacy')}
             </Link>
             <Link
               href={localizedPath(locale, 'terms')}
-              className="text-[15px] font-medium text-primary-text underline"
+              className="text-body-small font-medium text-primary-text underline"
             >
               {t.t('settings.terms')}
             </Link>
@@ -244,7 +246,7 @@ export function SettingsScreen({ locale }: { locale: UiLocale }) {
         </Card>
       </section>
 
-      <p className="mt-8 text-center text-[13px] text-ink-muted">
+      <p className="mt-8 text-center text-caption text-ink-muted">
         {t.t('settings.version', { version: '1.0.0' })}
       </p>
 

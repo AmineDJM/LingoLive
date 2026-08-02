@@ -133,19 +133,19 @@ export function JoinScreen({ locale, initialCode }: { locale: UiLocale; initialC
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-4">
         <header className="py-3">
           <h1 className="text-xl font-bold text-ink">{preview.title}</h1>
-          <p className="text-[14px] text-ink-secondary">
+          <p className="text-label text-ink-secondary">
             {t.t('join.organizedBy', { organizer: preview.organizerName })}
           </p>
           <div className="mt-2 flex items-center gap-3">
             <LiveIndicator label={t.t('join.live')} />
-            <span className="text-[14px] text-ink-muted">
+            <span className="text-label text-ink-muted">
               {t.t('join.participants', { count: participants })}
             </span>
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
               data-testid="viewer-language"
-              className="ms-auto rounded-[var(--radius-full)] border border-border bg-surface px-4 py-2 text-[15px] text-ink"
+              className="ms-auto rounded-[var(--radius-full)] border border-border bg-surface px-4 py-2 text-body-small text-ink"
             >
               {findLanguage(language)?.nativeName ?? language} ⌄
             </button>
@@ -217,11 +217,11 @@ export function JoinScreen({ locale, initialCode }: { locale: UiLocale; initialC
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
         <Card>
           <h1 className="text-xl font-bold text-ink">{preview.title}</h1>
-          <p className="text-[15px] text-ink-secondary">
+          <p className="text-body-small text-ink-secondary">
             {t.t('join.organizedBy', { organizer: preview.organizerName })}
           </p>
 
-          <h2 className="mt-6 text-[17px] font-semibold text-ink">{t.t('join.chooseLanguage')}</h2>
+          <h2 className="mt-6 text-body font-semibold text-ink">{t.t('join.chooseLanguage')}</h2>
           <ul className="mt-3 space-y-2">
             {SUGGESTED.map((candidate) => (
               <li key={candidate}>
@@ -253,7 +253,7 @@ export function JoinScreen({ locale, initialCode }: { locale: UiLocale; initialC
           >
             {busy ? t.t('join.joining') : t.t('join.title')}
           </Button>
-          <p className="mt-3 text-center text-[13px] text-ink-muted">
+          <p className="mt-3 text-center text-caption text-ink-muted">
             {t.t('join.noAccountNeeded')}
           </p>
         </Card>
@@ -280,10 +280,10 @@ export function JoinScreen({ locale, initialCode }: { locale: UiLocale; initialC
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
       <Card>
         <h1 className="text-2xl font-bold text-ink">{t.t('join.title')}</h1>
-        <p className="mt-2 text-[15px] text-ink-secondary">{t.t('join.codeHelp')}</p>
+        <p className="mt-2 text-body-small text-ink-secondary">{t.t('join.codeHelp')}</p>
 
         <label className="mt-6 block">
-          <span className="mb-2 block text-[15px] font-medium text-ink">
+          <span className="mb-2 block text-body-small font-medium text-ink">
             {t.t('join.enterCode')}
           </span>
           <input
@@ -309,7 +309,7 @@ export function JoinScreen({ locale, initialCode }: { locale: UiLocale; initialC
           {busy ? t.t('common.loading') : t.t('common.continue')}
         </Button>
 
-        <p className="mt-4 text-center text-[13px] text-ink-muted">
+        <p className="mt-4 text-center text-caption text-ink-muted">
           {t.t('join.noAccountNeeded')} · {t.t('plans.joinAlwaysFree')}
         </p>
       </Card>

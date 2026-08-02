@@ -125,7 +125,7 @@ export default async function MarketingPage({
                 {copy.faq.map((entry) => (
                   <div key={entry.question}>
                     <dt className="font-semibold text-ink">{entry.question}</dt>
-                    <dd className="mt-1.5 text-[16px] leading-relaxed text-ink-secondary">
+                    <dd className="mt-1.5 text-body leading-relaxed text-ink-secondary">
                       {entry.answer}
                     </dd>
                   </div>
@@ -152,7 +152,7 @@ export default async function MarketingPage({
                           {guideCopy.h1}
                         </Link>
                       </h3>
-                      <p className="mt-2 text-[15px] leading-relaxed text-ink-secondary">
+                      <p className="mt-2 text-body-small leading-relaxed text-ink-secondary">
                         {guideCopy.description}
                       </p>
                     </Card>
@@ -164,7 +164,7 @@ export default async function MarketingPage({
 
           {page.kind === 'legal' ? (
             <Card className="border-[var(--color-warning)]">
-              <p className="text-[15px] leading-relaxed text-ink-secondary">
+              <p className="text-body-small leading-relaxed text-ink-secondary">
                 {t.t('marketing.notAnInterpreter')}
               </p>
             </Card>

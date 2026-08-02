@@ -24,7 +24,7 @@ export function LanguageSwitcher({ locale, label }: { locale: UiLocale; label: s
   return (
     <details className="relative">
       <summary
-        className="flex cursor-pointer list-none items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-[15px] font-medium text-ink-secondary hover:text-ink"
+        className="flex cursor-pointer list-none items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-body-small font-medium text-ink-secondary hover:text-ink"
         aria-label={label}
         data-testid="language-switcher"
         data-touch-target
@@ -43,7 +43,7 @@ export function LanguageSwitcher({ locale, label }: { locale: UiLocale; label: s
               lang={definition.htmlLang}
               dir={definition.direction}
               className={cx(
-                'flex items-center rounded-[var(--radius-sm)] px-3 py-2.5 text-[15px]',
+                'flex items-center rounded-[var(--radius-sm)] px-3 py-2.5 text-body-small',
                 definition.locale === locale
                   ? 'bg-primary-soft font-semibold text-primary-text'
                   : 'text-ink hover:bg-primary-soft',

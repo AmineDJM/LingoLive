@@ -85,7 +85,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
               className={action.primary ? 'border-primary' : undefined}
             >
               <h2 className="text-xl font-bold text-ink">{action.title}</h2>
-              <p className="mt-2 text-[15px] leading-relaxed text-ink-secondary">{action.body}</p>
+              <p className="mt-2 text-body-small leading-relaxed text-ink-secondary">
+                {action.body}
+              </p>
               <ButtonLink
                 href={localizedPath(locale, action.path)}
                 variant={action.primary ? 'primary' : 'secondary'}
@@ -101,14 +103,16 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           {copy.sections.map((section) => (
             <section key={section.heading}>
               <h2 className="text-xl font-bold text-ink">{section.heading}</h2>
-              <p className="mt-2 text-[15px] leading-relaxed text-ink-secondary">{section.body}</p>
+              <p className="mt-2 text-body-small leading-relaxed text-ink-secondary">
+                {section.body}
+              </p>
             </section>
           ))}
         </div>
 
         <Card className="mt-20 border-live bg-live-soft">
           <h2 className="text-2xl font-bold text-ink">{t.t('marketing.privacyTitle')}</h2>
-          <p className="mt-3 max-w-2xl text-[17px] leading-relaxed text-ink-secondary">
+          <p className="mt-3 max-w-2xl text-body leading-relaxed text-ink-secondary">
             {t.t('marketing.privacyBody')}
           </p>
         </Card>

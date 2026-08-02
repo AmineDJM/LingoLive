@@ -136,7 +136,7 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
           label={session.context.state === 'listening' ? t.t('listen.live') : t.t('discuss.title')}
           paused={session.context.state !== 'listening'}
         />
-        <span className="ms-auto text-[14px] text-ink-muted" data-testid="translation-count">
+        <span className="ms-auto text-label text-ink-muted" data-testid="translation-count">
           {t.t('discuss.peopleCount', { count })}
         </span>
         <Button variant="secondary" onClick={() => void session.end()} data-testid="end-discussion">
@@ -212,7 +212,7 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                     onClick={() => setPickerFor(tile.id)}
                     data-testid={`tile-language-${tile.position}`}
                     aria-label={t.t('a11y.languageButton', { language: languageName })}
-                    className="truncate rounded-[var(--radius-full)] border border-[var(--seat)] bg-surface px-3 py-1.5 text-[13px] font-semibold text-[var(--seat-text)]"
+                    className="truncate rounded-[var(--radius-full)] border border-[var(--seat)] bg-surface px-3 py-1.5 text-caption font-semibold text-[var(--seat-text)]"
                   >
                     {languageName}
                   </button>
@@ -221,13 +221,13 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                     onClick={() => setDiscussion(rotateTile(discussion, tile.id))}
                     data-testid={`tile-rotate-${tile.position}`}
                     aria-label={t.t('a11y.rotateButton', { language: languageName })}
-                    className="ms-auto rounded-[var(--radius-full)] border border-border px-3 py-1.5 text-[15px] text-ink"
+                    className="ms-auto rounded-[var(--radius-full)] border border-border px-3 py-1.5 text-body-small text-ink"
                   >
                     ↻
                   </button>
                 </div>
 
-                <ol className="min-h-0 flex-1 overflow-y-auto text-[15px] leading-snug">
+                <ol className="min-h-0 flex-1 overflow-y-auto text-body-small leading-snug">
                   {tileLines.length === 0 ? (
                     <li className="py-4 text-center text-ink-muted">
                       {t.t('discuss.waitingForOthers')}
@@ -266,14 +266,14 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                     aria-label={t.t('discuss.typePlaceholder')}
                     data-testid={`tile-input-${tile.position}`}
                     dir={tile.direction}
-                    className="min-h-0 w-full min-w-0 rounded-[var(--radius-full)] border border-border bg-surface px-3 py-2 text-[14px] text-ink placeholder:text-ink-muted"
+                    className="min-h-0 w-full min-w-0 rounded-[var(--radius-full)] border border-border bg-surface px-3 py-2 text-label text-ink placeholder:text-ink-muted"
                   />
                   <button
                     type="submit"
                     disabled={!(drafts[tile.id] ?? '').trim()}
                     aria-label={t.t('discuss.send')}
                     data-testid={`tile-send-${tile.position}`}
-                    className="ll-pressable min-h-0 shrink-0 rounded-[var(--radius-full)] bg-primary px-3 py-2 text-[14px] font-semibold text-on-primary disabled:opacity-40"
+                    className="ll-pressable min-h-0 shrink-0 rounded-[var(--radius-full)] bg-primary px-3 py-2 text-label font-semibold text-on-primary disabled:opacity-40"
                   >
                     <span className="ll-flip-icon" aria-hidden="true">
                       ↑
@@ -318,7 +318,7 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                   aria-pressed={active}
                   className={cx(
                     'll-pressable mt-2 flex w-full items-center justify-center gap-2 rounded-[var(--radius-full)]',
-                    'py-4 text-[15px] font-bold tracking-[var(--tracking-label)]',
+                    'py-4 text-body-small font-bold tracking-[var(--tracking-label)]',
                     active
                       ? 'bg-[var(--seat)] text-on-primary shadow-[var(--shadow-raised)]'
                       : blocked
@@ -345,7 +345,7 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
         })}
       </div>
 
-      <p className="pt-2 text-center text-[13px] text-ink-muted">
+      <p className="pt-2 text-center text-caption text-ink-muted">
         {t.t('discuss.tapToSpeak')} ·{' '}
         {/* Made visible because it is the product's central cost property. */}
         {targetLanguagesForTurn(discussion, discussion.tiles[0]!.id).length}{' '}

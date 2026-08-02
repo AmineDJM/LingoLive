@@ -12,7 +12,7 @@ export default function NotFound() {
     >
       <p className="font-mono text-sm text-ink-muted">404</p>
       <h1 className="text-3xl font-bold text-ink">This page does not exist</h1>
-      <p className="text-[17px] leading-relaxed text-ink-secondary">
+      <p className="text-body leading-relaxed text-ink-secondary">
         The link may be out of date. Here is where most people are heading.
       </p>
       <ul className="w-full space-y-3">

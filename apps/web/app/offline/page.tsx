@@ -19,7 +19,7 @@ export default function OfflinePage() {
       className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-4 px-6 text-center"
     >
       <h1 className="text-2xl font-bold text-ink">You are offline</h1>
-      <p className="text-[17px] leading-relaxed text-ink-secondary">
+      <p className="text-body leading-relaxed text-ink-secondary">
         Live transcription needs an internet connection.
       </p>
       <a

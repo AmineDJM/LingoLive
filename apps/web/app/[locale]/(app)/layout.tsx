@@ -52,7 +52,7 @@ export default async function AppLayout({
             <li key={item.path} className="flex-1">
               <Link
                 href={localizedPath(definition.locale, item.path)}
-                className="flex min-h-12 items-center justify-center px-3 py-3 text-[14px] font-medium text-ink-secondary hover:text-ink"
+                className="flex min-h-12 items-center justify-center px-3 py-3 text-label font-medium text-ink-secondary hover:text-ink"
               >
                 {item.label}
               </Link>

@@ -60,7 +60,7 @@ export function LanguagePicker({
             onChange={(event) => setQuery(event.target.value)}
             placeholder={searchPlaceholder}
             aria-label={searchPlaceholder}
-            className="w-full rounded-[var(--radius-md)] border border-border bg-background px-4 py-3 text-[16px] text-ink"
+            className="w-full rounded-[var(--radius-md)] border border-border bg-background px-4 py-3 text-body text-ink"
           />
         </div>
 
@@ -135,10 +135,10 @@ function LanguageRow({
         selected ? 'bg-primary-soft' : 'hover:bg-primary-soft',
       )}
     >
-      <span className="text-[16px] font-medium text-ink" dir={dir} lang={lang}>
+      <span className="text-body font-medium text-ink" dir={dir} lang={lang}>
         {label}
       </span>
-      <span className="text-[13px] text-ink-muted">{hint}</span>
+      <span className="text-caption text-ink-muted">{hint}</span>
     </button>
   );
 }

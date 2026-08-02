@@ -362,12 +362,15 @@ export const SPEAK_BUTTON_SIZE = 88;
 // ---------------------------------------------------------------------------
 
 export const fontSize = {
+  hero: 56,
   display: 40,
   h1: 32,
   h2: 26,
   title: 20,
   body: 17,
   bodySmall: 15,
+  /** Dense UI: chips, meta rows, table cells. */
+  label: 14,
   caption: 13,
   /** Live transcript scales between these bounds via pinch / settings. */
   transcriptMin: 20,

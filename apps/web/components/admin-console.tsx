@@ -109,19 +109,19 @@ export function AdminConsole() {
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
         <Card>
           <h1 className="text-2xl font-bold text-ink">Operator console</h1>
-          <p className="mt-2 text-[15px] text-ink-secondary">
+          <p className="mt-2 text-body-small text-ink-secondary">
             Requires an administrator account and the deployment&apos;s admin token. The token is
             kept in memory only and is never stored in this browser.
           </p>
           <label className="mt-6 block">
-            <span className="mb-2 block text-[15px] font-medium text-ink">X-Admin-Token</span>
+            <span className="mb-2 block text-body-small font-medium text-ink">X-Admin-Token</span>
             <input
               type="password"
               value={adminToken}
               onChange={(event) => setAdminToken(event.target.value)}
               autoComplete="off"
               data-testid="admin-token"
-              className="w-full rounded-[var(--radius-md)] border border-border bg-background px-4 py-3 font-mono text-[15px] text-ink"
+              className="w-full rounded-[var(--radius-md)] border border-border bg-background px-4 py-3 font-mono text-body-small text-ink"
             />
           </label>
           {error ? <Alert tone="danger">{error}</Alert> : null}
@@ -157,7 +157,7 @@ export function AdminConsole() {
                 aria-current={tab === entry.id ? 'page' : undefined}
                 data-testid={`admin-tab-${entry.id}`}
                 className={cx(
-                  'whitespace-nowrap rounded-[var(--radius-md)] px-4 py-2.5 text-[14px] font-medium',
+                  'whitespace-nowrap rounded-[var(--radius-md)] px-4 py-2.5 text-label font-medium',
                   tab === entry.id
                     ? 'bg-primary text-on-primary'
                     : 'text-ink-secondary hover:bg-primary-soft',
@@ -210,7 +210,7 @@ function Stat({
 }) {
   return (
     <div className="rounded-[var(--radius-md)] border border-border bg-surface p-4">
-      <p className="text-[13px] uppercase tracking-wider text-ink-muted">{label}</p>
+      <p className="text-caption uppercase tracking-wider text-ink-muted">{label}</p>
       <p
         className={cx(
           'mt-1 text-2xl font-bold tabular-nums',
@@ -455,7 +455,7 @@ function MetricsPanel({ metrics }: { metrics?: AdminMetricsResponse }) {
 
 function RawPanel({ value }: { value: unknown }) {
   return (
-    <pre className="overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-4 font-mono text-[12px] leading-relaxed text-ink">
+    <pre className="overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-4 font-mono text-caption leading-relaxed text-ink">
       {JSON.stringify(value ?? {}, null, 2)}
     </pre>
   );
@@ -472,9 +472,9 @@ function Table({
 }) {
   return (
     <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
-      <table className="w-full border-collapse text-[14px]">
+      <table className="w-full border-collapse text-label">
         {caption ? (
-          <caption className="p-3 text-start text-[13px] text-ink-muted">{caption}</caption>
+          <caption className="p-3 text-start text-caption text-ink-muted">{caption}</caption>
         ) : null}
         <thead>
           <tr className="bg-surface">

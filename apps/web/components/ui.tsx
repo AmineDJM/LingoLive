@@ -40,8 +40,8 @@ const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
 };
 
 const BUTTON_SIZES: Record<ButtonSize, string> = {
-  md: 'px-5 py-3 text-[15px]',
-  lg: 'px-7 py-4 text-[17px]',
+  md: 'px-5 py-3 text-body-small',
+  lg: 'px-7 py-4 text-body',
 };
 
 export function Button({
@@ -200,7 +200,7 @@ export function Section({ heading, body }: { heading: string; body: string }) {
   return (
     <section>
       <h2 className="text-2xl font-bold text-ink">{heading}</h2>
-      <p className="mt-3 text-pretty text-[17px] leading-relaxed text-ink-secondary">{body}</p>
+      <p className="mt-3 text-pretty text-body leading-relaxed text-ink-secondary">{body}</p>
     </section>
   );
 }
@@ -227,7 +227,7 @@ export function Alert({
       role={tone === 'info' ? 'note' : 'alert'}
       data-testid={testId ?? 'alert'}
       className={cx(
-        'rounded-[var(--radius-md)] border p-4 text-[15px] leading-relaxed',
+        'rounded-[var(--radius-md)] border p-4 text-body-small leading-relaxed',
         tones[tone],
       )}
     >

@@ -69,10 +69,10 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
         <Card>
           <h1 className="text-2xl font-bold text-ink">{t.t('listen.endedTitle')}</h1>
-          <p className="mt-2 text-[17px] text-ink-secondary">
+          <p className="mt-2 text-body text-ink-secondary">
             {t.t('listen.endedDuration', { duration: t.formatDuration(session.elapsedSeconds) })}
           </p>
-          <p className="mt-1 text-[15px] text-ink-muted">{t.t('listen.audioNotStored')}</p>
+          <p className="mt-1 text-body-small text-ink-muted">{t.t('listen.audioNotStored')}</p>
 
           <div className="mt-6 space-y-3">
             {saved ? (
@@ -108,7 +108,7 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
         <Card>
           <h1 className="text-2xl font-bold text-ink">{t.t('home.listenTitle')}</h1>
-          <p className="mt-2 text-[17px] leading-relaxed text-ink-secondary">
+          <p className="mt-2 text-body leading-relaxed text-ink-secondary">
             {t.t('home.listenSubtitle')}
           </p>
 
@@ -125,7 +125,7 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
               {localisedError(t, session.errorCode)}
               {session.errorReference ? (
                 <span
-                  className="mt-2 block text-[13px] text-ink-muted"
+                  className="mt-2 block text-caption text-ink-muted"
                   data-testid="error-reference"
                 >
                   {t.t('errors.referenceId', { requestId: session.errorReference })}
@@ -134,7 +134,7 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
             </Alert>
           ) : null}
 
-          <p className="mt-6 text-[15px] text-ink-muted">{t.t('listen.audioNotStored')}</p>
+          <p className="mt-6 text-body-small text-ink-muted">{t.t('listen.audioNotStored')}</p>
 
           <Button
             className="mt-4 w-full"
@@ -159,7 +159,7 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
           paused={isPaused}
         />
         <span
-          className="font-mono text-[15px] tabular-nums text-ink-secondary"
+          className="font-mono text-body-small tabular-nums text-ink-secondary"
           data-testid="session-timer"
         >
           <VisuallyHidden>
@@ -173,7 +173,7 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
           onClick={() => setPickerOpen(true)}
           data-testid="language-chip"
           aria-label={t.t('a11y.languageButton', { language: languageLabel })}
-          className="ms-auto rounded-[var(--radius-full)] border border-border bg-surface px-4 py-2 text-[15px] font-medium text-ink"
+          className="ms-auto rounded-[var(--radius-full)] border border-border bg-surface px-4 py-2 text-body-small font-medium text-ink"
         >
           {languageLabel} ⌄
         </button>
@@ -214,7 +214,7 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
           {localisedError(t, session.errorCode)}
           {session.errorReference ? (
             <span
-              className="mt-2 block text-[13px] text-ink-muted"
+              className="mt-2 block text-caption text-ink-muted"
               data-testid="live-error-reference"
             >
               {t.t('errors.referenceId', { requestId: session.errorReference })}
@@ -251,7 +251,7 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
         </Button>
       </div>
 
-      <p className="pt-2 text-center text-[13px] text-ink-muted">
+      <p className="pt-2 text-center text-caption text-ink-muted">
         {isLive ? t.t('listen.micIndicator') : t.t('listen.audioNotStored')}
       </p>
 

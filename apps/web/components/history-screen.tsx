@@ -62,7 +62,7 @@ export function HistoryScreen({ locale }: { locale: UiLocale }) {
         onChange={(event) => setQuery(event.target.value)}
         placeholder={t.t('history.searchPlaceholder')}
         aria-label={t.t('history.searchPlaceholder')}
-        className="mt-4 w-full rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3 text-[16px] text-ink"
+        className="mt-4 w-full rounded-[var(--radius-md)] border border-border bg-surface px-4 py-3 text-body text-ink"
       />
 
       {error ? <Alert tone="danger">{t.t('errors.serverUnavailable')}</Alert> : null}
@@ -71,11 +71,11 @@ export function HistoryScreen({ locale }: { locale: UiLocale }) {
         <p className="py-12 text-center text-ink-muted">{t.t('common.loading')}</p>
       ) : filtered.length === 0 ? (
         <Card className="mt-6 text-center">
-          <p className="text-[17px] font-medium text-ink">
+          <p className="text-body font-medium text-ink">
             {query ? t.t('history.noResults', { query }) : t.t('history.empty')}
           </p>
           {!query ? (
-            <p className="mt-2 text-[15px] text-ink-secondary">{t.t('history.emptyBody')}</p>
+            <p className="mt-2 text-body-small text-ink-secondary">{t.t('history.emptyBody')}</p>
           ) : null}
         </Card>
       ) : (
@@ -90,10 +90,10 @@ export function HistoryScreen({ locale }: { locale: UiLocale }) {
                   <Card as="li" key={item.id}>
                     <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
-                        <h3 className="truncate text-[17px] font-semibold text-ink">
+                        <h3 className="truncate text-body font-semibold text-ink">
                           {item.title ?? t.t(kindLabel(item.kind))}
                         </h3>
-                        <p className="mt-0.5 text-[13px] text-ink-muted">
+                        <p className="mt-0.5 text-caption text-ink-muted">
                           {t.t('history.itemSubtitle', {
                             duration: t.formatDuration(item.durationSeconds),
                             languages: item.languages.join(', ') || '—',
@@ -102,7 +102,7 @@ export function HistoryScreen({ locale }: { locale: UiLocale }) {
                       </div>
                       <Badge>{t.t(kindLabel(item.kind))}</Badge>
                     </div>
-                    <p className="mt-2 line-clamp-2 text-[15px] leading-relaxed text-ink-secondary">
+                    <p className="mt-2 line-clamp-2 text-body-small leading-relaxed text-ink-secondary">
                       {item.preview}
                     </p>
                     <Button

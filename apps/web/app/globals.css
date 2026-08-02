@@ -39,6 +39,24 @@
   --font-sans: var(--ll-font-family);
   --font-mono: var(--ll-font-family-mono);
 
+  /*
+   * The type scale, as utilities.
+   *
+   * It existed in tokens and nothing read it: the audit counted 81 hard-coded
+   * sizes across 7 values. A scale nobody can reach is not a scale, so it is
+   * exposed here as `text-body`, `text-caption` and so on — the same names the
+   * mobile app reads from the token objects.
+   */
+  --text-hero: var(--ll-font-size-hero);
+  --text-display: var(--ll-font-size-display);
+  --text-h1: var(--ll-font-size-h1);
+  --text-h2: var(--ll-font-size-h2);
+  --text-title: var(--ll-font-size-title);
+  --text-body: var(--ll-font-size-body);
+  --text-body-small: var(--ll-font-size-body-small);
+  --text-label: var(--ll-font-size-label);
+  --text-caption: var(--ll-font-size-caption);
+
   --shadow-card: var(--ll-shadow-card);
   --shadow-raised: var(--ll-shadow-raised);
   --shadow-pressed: var(--ll-shadow-pressed);
