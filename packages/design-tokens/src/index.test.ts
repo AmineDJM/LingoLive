@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   clampTranscriptScale,
   contrastRatio,
+  conversation,
+  conversationColorFor,
   cssVariables,
   darkTheme,
   duration,
@@ -96,5 +98,51 @@ describe('css bridge', () => {
     expect(cssVariables('dark')['--ll-color-background']).not.toBe(
       cssVariables('light')['--ll-color-background'],
     );
+  });
+});
+
+describe('conversation colours', () => {
+  /**
+   * Seven hues, each with a surface and a text colour. The raw hues reach
+   * 1.7–3.7:1 on white, so the obvious thing to do with a colour — write in it
+   * — fails AA for every one of them. These assert that the derived pairs do
+   * not, because a participant's identity colour is worthless if their words
+   * become unreadable in it.
+   */
+  for (const [name, color] of Object.entries(conversation)) {
+    it(`${name}: text on its own light surface meets AA`, () => {
+      const ratio = contrastRatio(color.text, color.soft);
+      expect(meetsContrastAA(color.text, color.soft, 'normal'), `${ratio.toFixed(2)}`).toBe(true);
+    });
+
+    it(`${name}: text on its own dark surface meets AA`, () => {
+      const ratio = contrastRatio(color.textDark, color.softDark);
+      expect(meetsContrastAA(color.textDark, color.softDark, 'normal'), `${ratio.toFixed(2)}`).toBe(
+        true,
+      );
+    });
+  }
+
+  it('gives each seat at the table a different colour', () => {
+    // Four people is the maximum a Discuss session supports, and all four must
+    // be distinguishable — the same colour twice is worse than no colour.
+    const seats = [0, 1, 2, 3].map((position) => conversationColorFor(position).base);
+    expect(new Set(seats).size).toBe(4);
+  });
+
+  it('gives the same seat the same colour every time', () => {
+    // An identity that changes between sessions is not an identity.
+    expect(conversationColorFor(1).base).toBe(conversationColorFor(1).base);
+    expect(conversationColorFor(1).base).toBe(conversation.coral.base);
+  });
+});
+
+describe('muted text', () => {
+  it('is legible, not merely quiet', () => {
+    // A muted grey wants to be around #98A2B3, which reaches 2.58:1 on white —
+    // below AA for any text. Muted is a hierarchy signal, not permission to
+    // become unreadable.
+    expect(meetsContrastAA(lightTheme.textMuted, lightTheme.surface, 'normal')).toBe(true);
+    expect(meetsContrastAA(darkTheme.textMuted, darkTheme.surface, 'normal')).toBe(true);
   });
 });

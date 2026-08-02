@@ -15,6 +15,7 @@ import {
   type DiscussionState,
   type DiscussionTile,
 } from '@lingolive/realtime-core';
+import { conversationColorFor } from '@lingolive/design-tokens';
 import { createTranslator } from '@lingolive/i18n';
 import { useLiveSession } from '@/lib/use-live-session';
 import { Alert, Button, Card, cx, LiveIndicator } from './ui';
@@ -163,6 +164,10 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
         {discussion.tiles.map((tile) => {
           const placement = placements.find((entry) => entry.tileId === tile.id);
           const active = discussion.activeSpeakerTileId === tile.id;
+          // A person's colour, fixed by where they sit. Blue, coral, mint,
+          // violet — the same seat is the same colour on every device and every
+          // reload, because an identity that moves is not one.
+          const seat = conversationColorFor(tile.position);
           const blocked = !canSpeak(discussion, tile.id);
           const languageName =
             findLanguage(tile.readingLanguage)?.nativeName ?? tile.readingLanguage;
@@ -177,20 +182,26 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
               data-rotation={tile.rotation}
               data-direction={tile.direction}
               aria-label={t.t('discuss.slotLabel', { position: tile.position + 1 })}
+              data-quarter-turn={tileTransform(tile).isQuarterTurn}
+              data-speaking={active ? 'true' : 'false'}
               style={{
                 gridColumn: `${placement?.column ?? 1} / span ${placement?.columnSpan ?? 1}`,
                 gridRow: `${placement?.row ?? 1} / span ${placement?.rowSpan ?? 1}`,
                 ['--ll-tile-rotation' as string]: `${tile.rotation}deg`,
+                ['--seat' as string]: seat.base,
+                ['--seat-soft' as string]: seat.soft,
+                ['--seat-text' as string]: seat.text,
               }}
-              data-quarter-turn={tileTransform(tile).isQuarterTurn}
-              data-speaking={active ? 'true' : 'false'}
               className={cx(
-                'll-tile min-h-0 rounded-[var(--radius-lg)] border-2 transition-[background-color,border-color,box-shadow] duration-[var(--duration-base)] ease-[var(--ease-standard)]',
-                // Whoever is talking has to be obvious from across a table, at
-                // a glance, upside down. A pale tint was not.
-                active
-                  ? 'border-live bg-live-soft shadow-[var(--shadow-speaking)]'
-                  : 'border-border bg-surface',
+                'll-tile min-h-0 rounded-[var(--radius-xl)] border-2',
+                'transition-[background-color,border-color,box-shadow] duration-[var(--duration-base)] ease-[var(--ease-standard)]',
+                // Resting: the seat's colour as a quiet tint and border, so
+                // four people are four identities before anyone has spoken.
+                // Speaking: the same colour at full strength, with a ring —
+                // readable across a table and upside down, which is the actual
+                // viewing condition.
+                'border-[var(--seat)] bg-[var(--seat-soft)]',
+                active && 'shadow-[0_0_0_4px_var(--seat-soft),0_10px_30px_-8px_var(--seat)]',
               )}
               dir={tile.direction}
             >
@@ -201,7 +212,7 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                     onClick={() => setPickerFor(tile.id)}
                     data-testid={`tile-language-${tile.position}`}
                     aria-label={t.t('a11y.languageButton', { language: languageName })}
-                    className="truncate rounded-[var(--radius-full)] border border-border px-3 py-1.5 text-[13px] font-semibold text-ink"
+                    className="truncate rounded-[var(--radius-full)] border border-[var(--seat)] bg-surface px-3 py-1.5 text-[13px] font-semibold text-[var(--seat-text)]"
                   >
                     {languageName}
                   </button>
@@ -309,10 +320,10 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                     'll-pressable mt-2 flex w-full items-center justify-center gap-2 rounded-[var(--radius-full)]',
                     'py-4 text-[15px] font-bold tracking-[var(--tracking-label)]',
                     active
-                      ? 'bg-live text-on-primary shadow-[var(--shadow-speaking)]'
+                      ? 'bg-[var(--seat)] text-on-primary shadow-[var(--shadow-raised)]'
                       : blocked
                         ? 'bg-surface text-ink-muted shadow-none'
-                        : 'bg-primary text-on-primary shadow-[var(--shadow-card)]',
+                        : 'bg-[var(--seat)] text-on-primary shadow-[var(--shadow-card)]',
                   )}
                 >
                   {active ? (

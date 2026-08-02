@@ -11,32 +11,171 @@
 // Palette
 // ---------------------------------------------------------------------------
 
+/**
+ * Lingo Blue — the product's one structural colour.
+ *
+ * A full 50–900 ramp rather than three shades, because a ramp is what lets a
+ * tint, a border, a fill and a label on that fill all come from the same hue
+ * and stay in proportion. Three shades force improvisation, and improvisation
+ * is what 81 hard-coded values look like at the end.
+ */
+export const blue = {
+  50: '#EEF5FF',
+  100: '#DCEAFF',
+  200: '#BED8FF',
+  300: '#91BDFF',
+  400: '#5E9CFF',
+  500: '#3478F6',
+  600: '#2462DC',
+  700: '#1D4EB3',
+  800: '#1D438D',
+  900: '#1D396F',
+} as const;
+
+/**
+ * Conversation colours — one per person at the table.
+ *
+ * Discuss puts two to four people on one screen and previously gave them all
+ * the same blue, so the product's most distinctive screen looked the least
+ * distinctive. A person needs an identity that survives being read upside down
+ * across a table.
+ *
+ * Every hue carries four values because an accent cannot do four jobs. `base`
+ * is the identity — a border, a dot, a fill. `soft` is a surface that can hold
+ * text. `text` is the only one legible at body size, and it is DERIVED: each is
+ * the closest darkening of its own hue that reaches 4.5:1 on its own `soft`,
+ * computed rather than picked. The raw hues reach 1.7–3.7:1 on white, so using
+ * them for text — the obvious thing to do with a colour — would have failed
+ * every one of the seven.
+ */
+export interface ConversationColor {
+  readonly base: string;
+  readonly soft: string;
+  readonly text: string;
+  readonly softDark: string;
+  readonly textDark: string;
+}
+
+export const conversation = {
+  blue: {
+    base: '#3478F6',
+    soft: '#EEF5FF',
+    text: '#1D4EB3',
+    softDark: '#16294A',
+    textDark: '#91BDFF',
+  },
+  coral: {
+    base: '#FF6B6B',
+    soft: '#FFEDED',
+    text: '#B54C4C',
+    softDark: '#32202C',
+    textDark: '#FF6B6B',
+  },
+  mango: {
+    base: '#FFB84D',
+    soft: '#FFF6EA',
+    text: '#91692C',
+    softDark: '#322D27',
+    textDark: '#FFB84D',
+  },
+  mint: {
+    base: '#35C99A',
+    soft: '#E7F9F3',
+    text: '#217F61',
+    softDark: '#122F34',
+    textDark: '#35C99A',
+  },
+  violet: {
+    base: '#8C6FF7',
+    soft: '#F1EEFE',
+    text: '#735BCB',
+    softDark: '#202142',
+    textDark: '#9276F7',
+  },
+  aqua: {
+    base: '#32B5E8',
+    soft: '#E6F6FC',
+    text: '#217799',
+    softDark: '#112C40',
+    textDark: '#32B5E8',
+  },
+  rose: {
+    base: '#F062A6',
+    soft: '#FDECF4',
+    text: '#AF4879',
+    softDark: '#301F35',
+    textDark: '#F062A6',
+  },
+  lime: {
+    base: '#9ACD42',
+    soft: '#F3F9E8',
+    text: '#5C7B28',
+    softDark: '#223025',
+    textDark: '#9ACD42',
+  },
+} as const satisfies Record<string, ConversationColor>;
+
+export type ConversationColorName = keyof typeof conversation;
+
+/**
+ * The order people are given colours in.
+ *
+ * Fixed, so the second person at a table is always coral — on every device, on
+ * every reload, on web and on mobile. A participant whose colour changes
+ * between sessions has no identity at all.
+ */
+export const CONVERSATION_ORDER = [
+  'blue',
+  'coral',
+  'mint',
+  'violet',
+  'mango',
+  'aqua',
+  'rose',
+  'lime',
+] as const satisfies readonly ConversationColorName[];
+
+export function conversationColorFor(position: number): ConversationColor {
+  const name = CONVERSATION_ORDER[position % CONVERSATION_ORDER.length] ?? 'blue';
+  return conversation[name];
+}
+
 export const palette = {
-  primary: '#2F6BFF',
-  primaryDark: '#1F4FD0',
-  primarySoft: '#EAF0FF',
+  primary: blue[500],
+  primaryDark: blue[700],
+  primarySoft: blue[50],
 
-  live: '#14A88B',
-  liveSoft: '#E5F8F3',
+  live: '#35C99A',
+  liveSoft: '#E7F9F3',
 
-  ink: '#0D1726',
-  inkSecondary: '#5D6979',
-  inkMuted: '#8591A1',
+  ink: '#111827',
+  inkSecondary: '#667085',
+  /**
+   * Darker than the #98A2B3 a muted grey wants to be.
+   *
+   * That value reaches 2.58:1 on white — below AA for any text at all. This is
+   * the nearest darkening of the same grey that reaches 4.5:1, so "muted" stays
+   * a hierarchy signal rather than becoming an accessibility failure. Nothing
+   * that carries words is allowed to be decorative.
+   */
+  inkMuted: '#6F7683',
 
   backgroundLight: '#F5F7FB',
   surfaceLight: '#FFFFFF',
-  borderLight: '#DDE3EC',
+  borderLight: '#E6EAF0',
+  borderStrongLight: '#D4D9E2',
 
   danger: '#D92D20',
   dangerSoft: '#FEECEB',
-  warning: '#D97706',
+  warning: '#B45309',
 
-  backgroundDark: '#07111F',
-  surfaceDark: '#101C2E',
-  surfaceDarkSecondary: '#162338',
-  borderDark: '#283750',
+  backgroundDark: '#090F1C',
+  surfaceDark: '#111A2B',
+  surfaceDarkSecondary: '#182338',
+  borderDark: '#27344A',
   inkDark: '#F7F9FC',
-  inkDarkSecondary: '#B8C2D1',
+  inkDarkSecondary: '#B5C0D0',
+  inkMutedDark: '#7F8CA0',
 
   white: '#FFFFFF',
   black: '#000000',
@@ -84,7 +223,7 @@ export const lightTheme: ThemeColors = {
   surface: palette.surfaceLight,
   surfaceElevated: palette.surfaceLight,
   border: palette.borderLight,
-  borderStrong: '#C3CCDA',
+  borderStrong: palette.borderStrongLight,
 
   text: palette.ink,
   textSecondary: palette.inkSecondary,
@@ -98,7 +237,7 @@ export const lightTheme: ThemeColors = {
 
   live: palette.live,
   liveSoft: palette.liveSoft,
-  liveText: '#0B7A64',
+  liveText: '#217F61',
 
   danger: palette.danger,
   dangerSoft: palette.dangerSoft,
@@ -108,7 +247,7 @@ export const lightTheme: ThemeColors = {
   transcriptFinal: palette.ink,
 
   focusRing: palette.primary,
-  overlay: 'rgba(13, 23, 38, 0.55)',
+  overlay: 'rgba(17, 24, 39, 0.55)',
 };
 
 export const darkTheme: ThemeColors = {
@@ -120,17 +259,17 @@ export const darkTheme: ThemeColors = {
 
   text: palette.inkDark,
   textSecondary: palette.inkDarkSecondary,
-  textMuted: '#8A97A9',
+  textMuted: palette.inkMutedDark,
   textOnPrimary: palette.white,
 
-  primary: '#5B8CFF',
-  primaryHover: '#7BA3FF',
+  primary: blue[400],
+  primaryHover: blue[300],
   primarySoft: '#16294A',
-  primaryText: '#A9C3FF',
+  primaryText: blue[200],
 
-  live: '#2ECFAE',
-  liveSoft: '#0E2E29',
-  liveText: '#6FE3C9',
+  live: '#35C99A',
+  liveSoft: '#122F34',
+  liveText: '#5FE0BC',
 
   danger: '#F97066',
   dangerSoft: '#3A1512',
@@ -139,7 +278,7 @@ export const darkTheme: ThemeColors = {
   transcriptPartial: palette.inkDarkSecondary,
   transcriptFinal: palette.inkDark,
 
-  focusRing: '#8AB0FF',
+  focusRing: blue[300],
   overlay: 'rgba(3, 8, 15, 0.7)',
 };
 
@@ -152,15 +291,25 @@ export const themes: Record<ThemeName, ThemeColors> = {
 // Shape
 // ---------------------------------------------------------------------------
 
+/**
+ * Corner radii, spread across the scale rather than bunched.
+ *
+ * The audit found 17 uses of one step against 5 of all the others combined,
+ * which is why every surface read as the same weight: a hero card and a chip
+ * had almost the same corner. Radius is hierarchy — how large a thing is meant
+ * to feel — so the steps are far enough apart to be read as different.
+ */
 export const radius = {
-  /** Small controls: chips, inline pills. */
+  /** Chips, inline pills, small controls. */
   sm: 12,
-  /** Buttons. */
+  /** Buttons and inputs. */
   md: 16,
   /** Standard cards. */
-  lg: 18,
-  /** Large hero cards (Listen / Discuss / Join). */
+  lg: 20,
+  /** Main cards. */
   xl: 24,
+  /** Hero cards — the three actions on the home screen. */
+  hero: 32,
   /** Fully rounded. */
   full: 999,
 } as const;
@@ -175,8 +324,27 @@ export const spacing = {
   lg: 20,
   xl: 24,
   xxl: 32,
-  xxxl: 48,
-  huge: 64,
+  xxxl: 40,
+  huge: 48,
+  section: 64,
+  sectionLarge: 80,
+  page: 96,
+} as const;
+
+/**
+ * Breakpoints, named for the device that fails at each one.
+ *
+ * A layout is not "mobile" and "desktop": a compact phone in portrait and a
+ * tablet lying flat on a table between four people are different products, and
+ * Discuss is unusable if either is treated as a scaled version of the other.
+ */
+export const breakpoint = {
+  xs: 360,
+  sm: 480,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+  xxl: 1536,
 } as const;
 
 /**
@@ -404,6 +572,17 @@ export function cssVariables(theme: ThemeName): Record<string, string> {
   }
   vars['--ll-font-family'] = fontFamily.web;
   vars['--ll-font-family-mono'] = fontFamily.webMono;
+  for (const [key, value] of Object.entries(blue)) {
+    vars[`--ll-blue-${key}`] = value;
+  }
+  for (const [name, color] of Object.entries(conversation)) {
+    vars[`--ll-talk-${name}`] = color.base;
+    vars[`--ll-talk-${name}-soft`] = theme === 'dark' ? color.softDark : color.soft;
+    vars[`--ll-talk-${name}-text`] = theme === 'dark' ? color.textDark : color.text;
+  }
+  for (const [key, value] of Object.entries(breakpoint)) {
+    vars[`--ll-breakpoint-${key}`] = `${value}px`;
+  }
   for (const [key, value] of Object.entries(tracking)) {
     vars[`--ll-tracking-${toKebab(key)}`] = value;
   }
