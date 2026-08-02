@@ -55,6 +55,14 @@ language is learned.
 - Home: responsive grid — Listen spans both columns on wide screens, all three
   stack in priority order on a phone.
 - Materials on the header and sheets; press feedback on every control.
+- Listen: the controls float in a translucent bar pinned to the bottom, inside
+  the thumb arc and clear of the home indicator, blurring the transcript rather
+  than covering it. On a wide screen it stops floating and sits under the
+  transcript — a bar hovering over a desktop layout is a phone habit, not a
+  design.
+- Mobile (Expo) Discuss: the same seat colours as the web, from the same
+  tokens, with the speaking tile lifting in its own colour. The second person
+  at a table is coral on a phone and in a browser.
 
 ## Not done
 
@@ -62,8 +70,8 @@ Stated plainly rather than implied.
 
 - Listen, Join, Business, history, settings and the marketing site have the new
   tokens but not new compositions.
-- Mobile (Expo) reads the new palette through tokens; its screens are not
-  redesigned.
+- Mobile (Expo): Discuss carries the new identity; home, Listen, Join, history
+  and settings read the palette but are not recomposed.
 - Onboarding does not exist on web.
 - No screenshots in `docs/ui-redesign/`. See below.
 

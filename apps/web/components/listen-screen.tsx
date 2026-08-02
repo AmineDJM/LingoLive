@@ -7,7 +7,7 @@ import { createTranslator } from '@lingolive/i18n';
 import { createApiClient, checkMicrophoneAvailability } from '@/lib/client';
 import { useLiveSession } from '@/lib/use-live-session';
 import { localizedPath } from '@/lib/site';
-import { Alert, Button, Card, LiveIndicator, VisuallyHidden } from './ui';
+import { Alert, Button, Card, cx, LiveIndicator, VisuallyHidden } from './ui';
 import { Transcript } from './transcript';
 import { LanguagePicker } from './language-picker';
 import { localisedError } from '@/lib/errors';
@@ -152,7 +152,7 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
   // -- live ------------------------------------------------------------------
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 pb-4">
+    <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4">
       <header className="flex items-center gap-3 py-3">
         <LiveIndicator
           label={isPaused ? t.t('listen.paused') : t.t('listen.live')}
@@ -231,7 +231,26 @@ export function ListenScreen({ locale }: { locale: UiLocale }) {
         liveRegionLabel={t.t('a11y.liveRegionLabel')}
       />
 
-      <div className="flex gap-3 pt-3">
+      {/*
+        The controls float, in a translucent bar pinned to the bottom.
+
+        Designed for a phone held one-handed: the two things you reach for
+        while a session runs sit in the thumb arc, not at the top of a screen
+        you would have to shuffle your grip to reach. `safe-area-inset-bottom`
+        keeps them clear of the home indicator, and the bar blurs the transcript
+        behind it rather than covering it with a slab — you can see text is
+        still arriving underneath.
+
+        On a wide screen it stops floating and simply sits under the transcript:
+        a bar hovering over a desktop layout is a phone habit, not a design.
+      */}
+      <div
+        className={cx(
+          'll-material-bar sticky bottom-0 z-10 -mx-4 mt-3 flex gap-3 border-t px-4 pt-3',
+          'pb-[max(0.75rem,env(safe-area-inset-bottom))]',
+          'md:static md:mx-0 md:rounded-[var(--radius-xl)] md:border md:px-0 md:pb-3',
+        )}
+      >
         <Button
           className="flex-1"
           size="lg"

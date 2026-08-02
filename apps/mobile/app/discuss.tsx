@@ -15,6 +15,7 @@ import {
   type DiscussionTile,
 } from '@lingolive/realtime-core';
 import {
+  conversationColorFor,
   fontSize,
   MIN_TOUCH_TARGET,
   radius,
@@ -34,7 +35,7 @@ import { LanguageSheet } from '@/components/language-sheet';
  * the rule that rotating a tile must never flip right-to-left text.
  */
 export default function DiscussScreen() {
-  const { t, theme, preferences, haptic } = useApp();
+  const { t, theme, isDark, preferences, haptic } = useApp();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -157,6 +158,12 @@ export default function DiscussScreen() {
             findLanguage(tile.readingLanguage)?.nativeName ?? tile.readingLanguage;
           const fullWidth = (placement?.columnSpan ?? 1) > 1;
 
+          // The same seat colour the web uses, from the same tokens: the
+          // second person at a table is coral on a phone and in a browser.
+          const seat = conversationColorFor(tile.position);
+          const seatSoft = isDark ? seat.softDark : seat.soft;
+          const seatText = isDark ? seat.textDark : seat.text;
+
           return (
             <View
               key={tile.id}
@@ -167,10 +174,17 @@ export default function DiscussScreen() {
                 flexGrow: 1,
                 flexBasis: fullWidth ? '100%' : '48%',
                 minHeight: 160,
-                backgroundColor: active ? theme.liveSoft : theme.surface,
-                borderColor: active ? theme.live : theme.border,
+                backgroundColor: seatSoft,
+                borderColor: seat.base,
                 borderWidth: 2,
-                borderRadius: radius.lg,
+                borderRadius: radius.xl,
+                // Whoever holds the floor lifts, in their own colour. Readable
+                // across a table and upside down, which is how this is used.
+                shadowColor: seat.base,
+                shadowOpacity: active ? 0.35 : 0,
+                shadowRadius: active ? 16 : 0,
+                shadowOffset: { width: 0, height: active ? 6 : 0 },
+                elevation: active ? 8 : 0,
                 padding: spacing.md,
                 // Rotation applies to the tile only — never to the screen.
                 transform: [{ rotate: `${tile.rotation}deg` }],
@@ -193,7 +207,7 @@ export default function DiscussScreen() {
                 >
                   <Text
                     numberOfLines={1}
-                    style={{ color: theme.text, fontWeight: '600', fontSize: fontSize.caption }}
+                    style={{ color: seatText, fontWeight: '600', fontSize: fontSize.caption }}
                   >
                     {languageName}
                   </Text>
@@ -258,12 +272,8 @@ export default function DiscussScreen() {
                   minHeight: Math.min(SPEAK_BUTTON_SIZE, 64),
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderRadius: radius.md,
-                  backgroundColor: active
-                    ? theme.live
-                    : blocked
-                      ? theme.surfaceElevated
-                      : theme.primary,
+                  borderRadius: radius.full,
+                  backgroundColor: blocked ? theme.surfaceElevated : seat.base,
                   opacity: blocked ? 0.6 : 1,
                 }}
               >
