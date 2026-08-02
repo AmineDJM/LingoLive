@@ -99,6 +99,8 @@ export const ptBR: Messages = {
   },
 
   discuss: {
+    typePlaceholder: 'Escrever…',
+    send: 'Enviar',
     title: 'Conversar',
     howManyPeople: 'Quantas pessoas?',
     peopleCount: '{count} pessoas',

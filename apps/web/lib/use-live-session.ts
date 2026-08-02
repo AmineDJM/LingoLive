@@ -95,6 +95,38 @@ export function useLiveSession(options: UseLiveSessionOptions) {
   const transportRef = useRef<RealtimeTranscriptionTransport | null>(null);
   const startedAtRef = useRef<number | null>(null);
   const activeSlotRef = useRef<string | null>(null);
+  /**
+   * Written turns waiting for the socket to finish joining.
+   *
+   * `SessionClient.send` drops anything sent before the connection is open, and
+   * the first typed turn is sent milliseconds after the session is created —
+   * so it lands in that window every time. Dropping a sentence a person typed
+   * is not acceptable the way dropping a superseded audio partial is: they
+   * wrote it, they watched it disappear, and nothing said why.
+   */
+  const pendingTurnsRef = useRef<Array<{ position: number; text: string; sourceLanguage: string }>>(
+    [],
+  );
+  /**
+   * Set when the server has confirmed the join, not merely when the socket
+   * opened.
+   *
+   * Those are different moments. The server handles each message
+   * concurrently, so a turn sent right after `session.join` can be processed
+   * while the join is still awaiting the database — and is rejected as
+   * unauthenticated. An open socket is not permission to talk; the snapshot is.
+   */
+  const joinedRef = useRef(false);
+  /**
+   * Position → the slot id the SERVER knows.
+   *
+   * A Discuss tile carries a client-side id (`tile-0`) that means nothing to
+   * the database. Sending it as `slotId` made the server reject the whole
+   * segment — so a turn held on a tile was dropped entirely, spoken or typed,
+   * while a tap-and-release turn (which sends no slot at all) went through.
+   * That is why speaking sometimes appeared to work.
+   */
+  const serverSlotsRef = useRef<Map<number, string>>(new Map());
 
   const dispatch = useCallback((action: RealtimeAction) => {
     setContext((current) => realtimeReducer(current, action));
@@ -145,10 +177,23 @@ export function useLiveSession(options: UseLiveSessionOptions) {
     (event: ServerEvent) => {
       const store = storeRef.current;
       switch (event.type) {
-        case 'session.snapshot':
+        case 'session.snapshot': {
           store.hydrate(event.segments);
           setParticipantCount(event.participantCount);
+          joinedRef.current = true;
+          const queued = pendingTurnsRef.current;
+          pendingTurnsRef.current = [];
+          for (const turn of queued) {
+            const slotId = serverSlotsRef.current.get(turn.position);
+            clientRef.current?.send({
+              type: 'transcript.final',
+              text: turn.text,
+              sourceLanguage: turn.sourceLanguage,
+              ...(slotId ? { slotId } : {}),
+            });
+          }
           break;
+        }
         case 'transcript.partial':
           store.applyPartial({
             slotId: event.slotId,
@@ -316,6 +361,9 @@ export function useLiveSession(options: UseLiveSessionOptions) {
         ...(options.slots ? { slots: options.slots } : {}),
       });
       setSessionId(created.session.id);
+      serverSlotsRef.current = new Map(
+        created.session.slots.map((slot) => [slot.position, slot.id]),
+      );
 
       const tokenResponse = await api.requestTranscriptionToken({
         sessionId: created.session.id,
@@ -347,6 +395,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
         },
       });
       clientRef.current = client;
+      joinedRef.current = false;
       client.connect();
 
       startedAtRef.current = Date.now();
@@ -430,16 +479,65 @@ export function useLiveSession(options: UseLiveSessionOptions) {
     dispatch({ type: 'ENDED' });
   }, [clearIdleTimer, dispatch]);
 
-  const startSpeaking = useCallback((slotId: string) => {
-    activeSlotRef.current = slotId;
-    clientRef.current?.send({ type: 'speaker.start', slotId });
-    void transportRef.current?.resume();
+  /** The id the server knows for a tile position, if the session has one. */
+  const serverSlotId = useCallback((position: number): string | null => {
+    return serverSlotsRef.current.get(position) ?? null;
   }, []);
 
-  const stopSpeaking = useCallback((slotId: string) => {
-    clientRef.current?.send({ type: 'speaker.stop', slotId });
-    void transportRef.current?.pause();
-    activeSlotRef.current = null;
+  const startSpeaking = useCallback(
+    (position: number) => {
+      activeSlotRef.current = serverSlotId(position);
+      const slotId = activeSlotRef.current;
+      clientRef.current?.send({ type: 'speaker.start', ...(slotId ? { slotId } : {}) });
+      void transportRef.current?.resume();
+    },
+    [serverSlotId],
+  );
+
+  const stopSpeaking = useCallback(
+    (position: number) => {
+      const slotId = serverSlotId(position);
+      clientRef.current?.send({ type: 'speaker.stop', ...(slotId ? { slotId } : {}) });
+      void transportRef.current?.pause();
+      activeSlotRef.current = null;
+    },
+    [serverSlotId],
+  );
+
+  /**
+   * Contributes a written turn, as if it had been spoken.
+   *
+   * Sent as a final segment on the same socket, so it takes exactly the path
+   * speech takes: sequenced, translated into every other language in the room,
+   * persisted under the same rules. Nothing downstream needs to know it was
+   * typed — which is the point. Someone who cannot speak, will not speak, or is
+   * spelling out a street name is a participant in the conversation, not a
+   * special case.
+   *
+   * The source language is the writer's own, and is stated rather than
+   * detected: they chose it for their tile, and a typed line is usually too
+   * short to detect reliably.
+   */
+  const sendTypedText = useCallback((position: number, text: string, sourceLanguage: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    // The first written turn is sent the moment the session exists, and the
+    // socket is still opening then — `start()` resolves before the connection
+    // does. `send` reports that by returning false, and the event is simply
+    // dropped. That is right for a superseded audio partial and wrong for a
+    // sentence a person typed: they wrote it, watched it vanish, and nothing
+    // said why. Held until the server acknowledges the join, then sent.
+    const slotId = serverSlotsRef.current.get(position);
+    const sent =
+      joinedRef.current &&
+      clientRef.current?.send({
+        type: 'transcript.final',
+        text: trimmed,
+        sourceLanguage,
+        ...(slotId ? { slotId } : {}),
+      });
+    if (!sent) pendingTurnsRef.current.push({ position, text: trimmed, sourceLanguage });
   }, []);
 
   const changeLanguage = useCallback((language: string) => {
@@ -495,6 +593,7 @@ export function useLiveSession(options: UseLiveSessionOptions) {
     end,
     startSpeaking,
     stopSpeaking,
+    sendTypedText,
     changeLanguage,
   };
 }

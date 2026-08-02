@@ -212,6 +212,28 @@ test.describe('Discuss', () => {
     await expect(page.getByTestId('tile-1')).toHaveAttribute('data-speaking', 'true');
   });
 
+  test('lets someone write their turn instead of speaking it', async ({ page }) => {
+    // Speaking is not always possible: a quiet room, a shared office, a street
+    // name nobody can pronounce, or someone who does not speak at all. A
+    // written turn takes the same path as a spoken one.
+    await page.goto('/en/discuss');
+    await page.getByTestId('people-2').click();
+
+    await page.getByTestId('tile-input-0').fill('Where is the station?');
+    await page.getByTestId('tile-send-0').click();
+
+    // It lands in the conversation, and the other tile sees it too.
+    await expect(page.getByTestId('tile-0').getByTestId('tile-line').first()).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.getByTestId('tile-1').getByTestId('tile-line').first()).toBeVisible({
+      timeout: 20_000,
+    });
+
+    // The field is cleared, so the next turn starts empty.
+    await expect(page.getByTestId('tile-input-0')).toHaveValue('');
+  });
+
   test('allows only one speaker at a time', async ({ page }) => {
     await page.goto('/en/discuss');
     await page.getByTestId('people-2').click();

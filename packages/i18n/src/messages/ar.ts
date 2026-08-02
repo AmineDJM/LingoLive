@@ -105,6 +105,8 @@ export const ar: Messages = {
   },
 
   discuss: {
+    typePlaceholder: 'اكتب…',
+    send: 'إرسال',
     title: 'تحدّث',
     howManyPeople: 'كم عدد الأشخاص؟',
     peopleCount: '{count} أشخاص',

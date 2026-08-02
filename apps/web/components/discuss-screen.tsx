@@ -32,6 +32,7 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
   const [count, setCount] = useState<DiscussParticipantCount | null>(null);
   const [discussion, setDiscussion] = useState<DiscussionState | null>(null);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
 
   const slots = useMemo(
     () =>
@@ -90,19 +91,41 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
     if (!canSpeak(discussion, tile.id)) return;
     setDiscussion(startSpeakingIn(discussion, tile.id));
     if (!session.sessionId) {
-      void session.start().then(() => session.startSpeaking(tile.id));
+      void session.start().then(() => session.startSpeaking(tile.position));
     } else {
-      session.startSpeaking(tile.id);
+      session.startSpeaking(tile.position);
     }
   };
 
   // Idempotent on purpose: pointerup, pointercancel and lostpointercapture can
   // all fire for one gesture, and releasing a turn nobody holds must be a no-op
   // rather than something that cuts off whoever spoke next.
+  /**
+   * A written turn.
+   *
+   * Speaking is not always possible — a quiet room, a shared office, a sore
+   * throat, a street name nobody can pronounce, or simply someone who does not
+   * speak. Written turns go down the same path as spoken ones and are
+   * translated for everyone else identically, so the conversation does not
+   * fork into a first and second class of participant.
+   */
+  const onSend = (tile: DiscussionTile): void => {
+    const text = (drafts[tile.id] ?? '').trim();
+    if (!text) return;
+    setDrafts((current) => ({ ...current, [tile.id]: '' }));
+    if (!session.sessionId) {
+      void session
+        .start()
+        .then(() => session.sendTypedText(tile.position, text, tile.readingLanguage));
+      return;
+    }
+    session.sendTypedText(tile.position, text, tile.readingLanguage);
+  };
+
   const onSpeakEnd = (tile: DiscussionTile): void => {
     if (discussion.activeSpeakerTileId !== tile.id) return;
     setDiscussion(stopSpeakingIn(discussion, tile.id));
-    session.stopSpeaking(tile.id);
+    session.stopSpeaking(tile.position);
   };
 
   return (
@@ -214,6 +237,38 @@ export function DiscussScreen({ locale }: { locale: UiLocale }) {
                     ))
                   )}
                 </ol>
+
+                <form
+                  className="mt-2 flex items-center gap-2"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    onSend(tile);
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={drafts[tile.id] ?? ''}
+                    onChange={(event) =>
+                      setDrafts((current) => ({ ...current, [tile.id]: event.target.value }))
+                    }
+                    placeholder={t.t('discuss.typePlaceholder')}
+                    aria-label={t.t('discuss.typePlaceholder')}
+                    data-testid={`tile-input-${tile.position}`}
+                    dir={tile.direction}
+                    className="min-h-0 w-full min-w-0 rounded-[var(--radius-full)] border border-border bg-surface px-3 py-2 text-[14px] text-ink placeholder:text-ink-muted"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!(drafts[tile.id] ?? '').trim()}
+                    aria-label={t.t('discuss.send')}
+                    data-testid={`tile-send-${tile.position}`}
+                    className="ll-pressable min-h-0 shrink-0 rounded-[var(--radius-full)] bg-primary px-3 py-2 text-[14px] font-semibold text-on-primary disabled:opacity-40"
+                  >
+                    <span className="ll-flip-icon" aria-hidden="true">
+                      ↑
+                    </span>
+                  </button>
+                </form>
 
                 <button
                   type="button"

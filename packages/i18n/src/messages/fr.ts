@@ -101,6 +101,8 @@ export const fr: Messages = {
   },
 
   discuss: {
+    typePlaceholder: 'Écrire…',
+    send: 'Envoyer',
     title: 'Discuter',
     howManyPeople: 'Combien de personnes ?',
     peopleCount: '{count} personnes',

@@ -106,6 +106,8 @@ export const en = {
   },
 
   discuss: {
+    typePlaceholder: 'Type instead…',
+    send: 'Send',
     title: 'Discuss',
     howManyPeople: 'How many people?',
     peopleCount: '{count} people',
